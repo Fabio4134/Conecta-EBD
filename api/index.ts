@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { initDb, supabase } from "../db.js";
+import { initDb, supabase } from "../db";
 
 const JWT_SECRET = "ebd-secret-key-2026";
 
