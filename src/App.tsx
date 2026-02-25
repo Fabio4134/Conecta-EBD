@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Menu, GraduationCap } from 'lucide-react';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -25,6 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [activeMenu, setActiveMenu] = useState('inicio');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,13 +75,30 @@ export default function App() {
     <div className="min-h-screen bg-neutral-50 flex font-sans text-neutral-900">
       <Sidebar 
         activeMenu={activeMenu} 
-        setActiveMenu={setActiveMenu} 
+        setActiveMenu={(menu) => {
+          setActiveMenu(menu);
+          setIsSidebarOpen(false);
+        }} 
         role={user.role} 
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
       
-      <main className="flex-1 ml-64 p-10 min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 md:ml-64 min-h-screen">
+        <div className="md:hidden bg-neutral-900 text-white p-4 flex items-center justify-between sticky top-0 z-10 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+              <GraduationCap size={18} />
+            </div>
+            <h1 className="font-bold tracking-tight">Conecta EBD</h1>
+          </div>
+          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-neutral-300 hover:text-white">
+            <Menu size={24} />
+          </button>
+        </div>
+
+        <div className="p-4 md:p-10 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMenu}
