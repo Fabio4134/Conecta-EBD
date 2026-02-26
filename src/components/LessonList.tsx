@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { Lesson, Magazine } from '../types';
+import api from '../api.js';
+import { Lesson, Magazine } from '../types.js';
 import { Plus, Trash2, Search, Edit2, BookOpen } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -102,14 +102,14 @@ export default function LessonList({ role }: { role: string }) {
             <div className="flex flex-wrap gap-4 pb-2">
                 <button
                     onClick={() => setSelectedMagazineId(null)}
-                    className={`px-6 py-4 rounded-2xl border transition-all text-left flex-1 min-w-[200px] ${selectedMagazineId === null
-                            ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200'
-                            : 'bg-white border-neutral-200 text-neutral-600 hover:border-purple-300 hover:bg-purple-50'
+                    className={`glass-card p-6 rounded-3xl min-w-[200px] text-left transition-all group ${selectedMagazineId === null
+                        ? 'ring-2 ring-purple-500 bg-white/60 shadow-lg shadow-purple-500/10'
+                        : 'hover:bg-white/40'
                         }`}
                 >
-                    <BookOpen size={24} className={`mb-2 ${selectedMagazineId === null ? 'text-white' : 'text-purple-500'}`} />
-                    <h3 className="font-bold text-sm">Todas as Revistas</h3>
-                    <p className={`text-xs mt-1 ${selectedMagazineId === null ? 'text-purple-100' : 'text-neutral-400'}`}>
+                    <BookOpen size={24} className={`mb-3 transition-colors ${selectedMagazineId === null ? 'text-purple-600' : 'text-neutral-400 group-hover:text-purple-500'}`} />
+                    <h3 className="font-bold text-sm text-neutral-900">Todas as Revistas</h3>
+                    <p className="text-xs mt-1 text-neutral-500">
                         {lessons.length} lições cadastradas
                     </p>
                 </button>
@@ -121,14 +121,14 @@ export default function LessonList({ role }: { role: string }) {
                         <button
                             key={mag.id}
                             onClick={() => setSelectedMagazineId(mag.id)}
-                            className={`px-6 py-4 rounded-2xl border transition-all text-left flex-1 min-w-[200px] ${isSelected
-                                    ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200'
-                                    : 'bg-white border-neutral-200 text-neutral-600 hover:border-purple-300 hover:bg-purple-50'
+                            className={`glass-card p-6 rounded-3xl min-w-[200px] text-left transition-all group overflow-hidden ${isSelected
+                                ? 'ring-2 ring-purple-500 bg-white/60 shadow-lg shadow-purple-500/10'
+                                : 'hover:bg-white/40'
                                 }`}
                         >
-                            <BookOpen size={24} className={`mb-2 ${isSelected ? 'text-white' : 'text-purple-500'}`} />
-                            <h3 className="font-bold text-sm line-clamp-2" title={mag.title}>{mag.title}</h3>
-                            <p className={`text-xs mt-1 ${isSelected ? 'text-purple-100' : 'text-neutral-400'}`}>
+                            <BookOpen size={24} className={`mb-3 transition-colors ${isSelected ? 'text-purple-600' : 'text-neutral-400 group-hover:text-purple-500'}`} />
+                            <h3 className="font-bold text-sm text-neutral-900 line-clamp-2" title={mag.title}>{mag.title}</h3>
+                            <p className="text-xs mt-1 text-neutral-500">
                                 {magLessonsCount} lições cadastradas
                             </p>
                         </button>
@@ -136,22 +136,24 @@ export default function LessonList({ role }: { role: string }) {
                 })}
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-                <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
-                    <Search size={18} className="text-neutral-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por título ou revista..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+            <div className="glass-panel rounded-3xl overflow-hidden">
+                <div className="p-5 border-b border-neutral-200/50 flex items-center gap-3">
+                    <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-purple-500/50 focus-within:border-purple-500 transition-all shadow-sm">
+                        <Search size={18} className="text-neutral-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por título ou revista..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-400 font-bold">
+                            <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
                                 <th className="px-6 py-4">Nº</th>
                                 <th className="px-6 py-4">Título</th>
                                 <th className="px-6 py-4">Revista</th>
@@ -160,9 +162,9 @@ export default function LessonList({ role }: { role: string }) {
                                 {role === 'master' && <th className="px-6 py-4 text-right">Ações</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-100">
+                        <tbody className="divide-y divide-neutral-200/50">
                             {filtered.map((lesson) => (
-                                <tr key={lesson.id} className="hover:bg-neutral-50 transition-colors">
+                                <tr key={lesson.id} className="hover:bg-white/40 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
                                             {lesson.number}
@@ -201,42 +203,42 @@ export default function LessonList({ role }: { role: string }) {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2 }} className="glass-panel rounded-[2rem] p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-white/60">
                         <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Lição' : 'Nova Lição'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Revista</label>
-                                    <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.magazine_id} onChange={(e) => setFormData({ ...formData, magazine_id: e.target.value })}>
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Revista</label>
+                                    <select required className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.magazine_id} onChange={(e) => setFormData({ ...formData, magazine_id: e.target.value })}>
                                         <option value="">Selecione</option>
                                         {magazines.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Número</label>
-                                    <input required type="number" min="1" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} />
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Número</label>
+                                    <input required type="number" min="1" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.number} onChange={(e) => setFormData({ ...formData, number: e.target.value })} />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Título da Lição</label>
-                                <input required type="text" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Título da Lição</label>
+                                <input required type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Data</label>
-                                <input type="date" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Data</label>
+                                <input type="date" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Texto Áureo</label>
-                                <input type="text" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.golden_text} onChange={(e) => setFormData({ ...formData, golden_text: e.target.value })} />
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Texto Áureo</label>
+                                <input type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.golden_text} onChange={(e) => setFormData({ ...formData, golden_text: e.target.value })} />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Hinos Sugeridos</label>
-                                <input type="text" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.suggested_hymns} onChange={(e) => setFormData({ ...formData, suggested_hymns: e.target.value })} />
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Hinos Sugeridos</label>
+                                <input type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm" value={formData.suggested_hymns} onChange={(e) => setFormData({ ...formData, suggested_hymns: e.target.value })} />
                             </div>
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl hover:bg-neutral-50 font-medium">Cancelar</button>
-                                <button type="submit" className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium shadow-lg shadow-emerald-100">Salvar</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200/80 text-neutral-600 rounded-xl hover:bg-neutral-100 transition-all font-bold text-sm bg-white/50">Cancelar</button>
+                                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 mt-0">Salvar</button>
                             </div>
                         </form>
                     </motion.div>

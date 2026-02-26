@@ -46,51 +46,64 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, onLogout, isO
         />
       )}
       <div className={cn(
-        "w-64 bg-neutral-900 text-neutral-400 h-screen fixed left-0 top-0 flex flex-col border-r border-white/5 z-50 transition-transform duration-300 md:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "w-64 bg-neutral-900 border-r border-white/10 h-screen fixed left-0 top-0 flex flex-col z-50 transition-transform duration-300 md:translate-x-0 overflow-hidden",
+        "bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-950",
+        isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
       )}>
-        <div className="p-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
-              <GraduationCap size={24} />
+        {/* Decorative background glow */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="p-6 flex flex-col gap-6 relative z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-500/20 rounded-xl flex items-center justify-center text-white ring-1 ring-white/20">
+                <GraduationCap size={22} />
+              </div>
+              <div>
+                <h1 className="text-white font-bold tracking-tight text-lg leading-tight">Conecta EBD</h1>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-400/90 font-bold mt-0.5">{role}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-white font-bold tracking-tight">Conecta EBD</h1>
-              <p className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">{role}</p>
-            </div>
+            <button
+              className="md:hidden p-2 text-neutral-400 hover:text-white transition-colors"
+              onClick={() => setIsOpen?.(false)}
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            className="md:hidden p-2 text-neutral-400 hover:text-white"
-            onClick={() => setIsOpen?.(false)}
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          {menus.map((menu) => (
-            <button
-              key={menu.id}
-              onClick={() => setActiveMenu(menu.id)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium",
-                activeMenu === menu.id
-                  ? "bg-emerald-600/10 text-emerald-500"
-                  : "hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <menu.icon size={18} />
-              {menu.label}
-            </button>
-          ))}
+        <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto custom-scrollbar relative z-10">
+          {menus.map((menu) => {
+            const isActive = activeMenu === menu.id;
+            return (
+              <button
+                key={menu.id}
+                onClick={() => setActiveMenu(menu.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium group relative overflow-hidden",
+                  isActive
+                    ? "text-emerald-400 bg-white/5 shadow-inner shadow-white/5 ring-1 ring-white/10"
+                    : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
+                )}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-emerald-500 rounded-r-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                )}
+                <menu.icon size={isActive ? 20 : 18} className={cn("transition-all duration-300", isActive ? "text-emerald-400" : "text-neutral-500 group-hover:text-neutral-300")} />
+                <span className="relative z-10">{menu.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 relative z-10 bg-black/20 backdrop-blur-md">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-400/10 transition-all"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/90 hover:bg-red-500/10 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20 group"
           >
-            <LogOut size={18} />
+            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
             Sair do Sistema
           </button>
         </div>

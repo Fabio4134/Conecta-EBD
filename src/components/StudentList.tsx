@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { Student, Class } from '../types';
+import api from '../api.js';
+import { Student, Class } from '../types.js';
 import { Plus, Trash2, Search, UserPlus, Edit2, Power, PowerOff } from 'lucide-react';
 import { motion } from 'motion/react';
-import { formatDate } from '../utils';
+import { formatDate } from '../utils.js';
 
 export default function StudentList({ role }: { role: string }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -73,7 +73,7 @@ export default function StudentList({ role }: { role: string }) {
     }
   };
 
-  const filteredStudents = students.filter(s => 
+  const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.church_name?.toLowerCase().includes(search.toLowerCase())
   );
@@ -85,7 +85,7 @@ export default function StudentList({ role }: { role: string }) {
           <h1 className="text-2xl font-bold text-neutral-900">Gestão de Alunos</h1>
           <p className="text-neutral-500 text-sm italic serif">Cadastre e gerencie os alunos da sua igreja.</p>
         </div>
-        <button 
+        <button
           onClick={() => { setShowModal(true); setEditingId(null); }}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
         >
@@ -94,22 +94,24 @@ export default function StudentList({ role }: { role: string }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-        <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
-          <Search size={18} className="text-neutral-400" />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome ou igreja..." 
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="glass-panel rounded-3xl overflow-hidden">
+        <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm">
+            <Search size={18} className="text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou igreja..."
+              className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-400 font-bold">
+              <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
                 <th className="px-6 py-4">Nome</th>
                 <th className="px-6 py-4">Classe</th>
                 {role === 'master' && <th className="px-6 py-4">Igreja</th>}
@@ -118,9 +120,9 @@ export default function StudentList({ role }: { role: string }) {
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
+            <tbody className="divide-y divide-neutral-200/50">
               {filteredStudents.map((student) => (
-                <tr key={student.id} className={`hover:bg-neutral-50 transition-colors group ${!student.active ? 'opacity-50' : ''}`}>
+                <tr key={student.id} className={`hover:bg-white/40 transition-colors group ${!student.active ? 'opacity-50' : ''}`}>
                   <td className="px-6 py-4">
                     <p className="text-sm font-bold text-neutral-800">{student.name}</p>
                   </td>
@@ -132,9 +134,8 @@ export default function StudentList({ role }: { role: string }) {
                   )}
                   <td className="px-6 py-4 text-sm text-neutral-500">{formatDate(student.birth_date)}</td>
                   <td className="px-6 py-4">
-                    <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-widest ${
-                      student.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
-                    }`}>
+                    <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-widest ${student.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                      }`}>
                       {student.active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
@@ -159,38 +160,39 @@ export default function StudentList({ role }: { role: string }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+            transition={{ duration: 0.2 }}
+            className="glass-panel rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-white/60"
           >
             <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Aluno' : 'Cadastrar Aluno'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Nome Completo</label>
-                <input 
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Nome Completo</label>
+                <input
                   required
-                  type="text" 
-                  className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  type="text"
+                  className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all shadow-sm"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Data de Nascimento</label>
-                <input 
-                  type="date" 
-                  className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Data de Nascimento</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all shadow-sm"
                   value={formData.birth_date}
                   onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Classe</label>
-                <select 
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Classe</label>
+                <select
                   required
-                  className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all shadow-sm appearance-none"
                   value={formData.class_id}
                   onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                 >
@@ -199,18 +201,18 @@ export default function StudentList({ role }: { role: string }) {
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-neutral-200 text-neutral-600 rounded-xl hover:bg-neutral-50 transition-all font-medium"
+                  className="flex-1 px-4 py-3 border border-neutral-200/80 text-neutral-600 rounded-xl hover:bg-neutral-100 transition-all font-bold text-sm bg-white/50"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium shadow-lg shadow-emerald-100"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 mt-0"
                 >
-                  Salvar Aluno
+                  Salvar
                 </button>
               </div>
             </form>

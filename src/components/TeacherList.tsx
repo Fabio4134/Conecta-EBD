@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { Teacher, Class } from '../types';
+import api from '../api.js';
+import { Teacher, Church, Class } from '../types.js';
 import { Users, Search, GraduationCap, Plus, Edit2, Trash2, X, Power, PowerOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -33,7 +33,7 @@ export default function TeacherList({ role }: { role: string }) {
     e.preventDefault();
     try {
       if (editingId) {
-        await api.put(`/teachers/${editingId}`, formData);
+        await api.put(`/ teachers / ${editingId} `, formData);
       } else {
         await api.post('/teachers', formData);
       }
@@ -55,7 +55,7 @@ export default function TeacherList({ role }: { role: string }) {
   const handleDelete = async (id: number) => {
     if (confirm('Deseja realmente excluir este professor?')) {
       try {
-        await api.delete(`/teachers/${id}`);
+        await api.delete(`/ teachers / ${id} `);
         fetchData();
       } catch (err: any) {
         alert(err.response?.data?.error || 'Erro ao excluir professor. Verifique se existem escalas vinculadas.');
@@ -65,7 +65,7 @@ export default function TeacherList({ role }: { role: string }) {
 
   const handleToggleStatus = async (id: number) => {
     try {
-      await api.patch(`/teachers/${id}/toggle`);
+      await api.patch(`/ teachers / ${id}/toggle`);
       fetchData();
     } catch (err) {
       alert('Erro ao alterar status do professor');
@@ -96,9 +96,9 @@ export default function TeacherList({ role }: { role: string }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-        <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 w-full bg-neutral-50 px-4 py-2 rounded-xl flex items-center gap-2 border border-neutral-200">
+      <div className="glass-panel rounded-3xl overflow-hidden">
+        <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm">
             <Search size={18} className="text-neutral-400" />
             <input
               type="text"
@@ -111,7 +111,7 @@ export default function TeacherList({ role }: { role: string }) {
 
           {role === 'master' && uniqueChurches.length > 0 && (
             <select
-              className="w-full sm:w-auto px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500"
+              className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterChurch}
               onChange={(e) => setFilterChurch(e.target.value)}
             >
@@ -126,7 +126,7 @@ export default function TeacherList({ role }: { role: string }) {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-400 font-bold">
+              <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
                 <th className="px-6 py-4">Nome</th>
                 <th className="px-6 py-4">Classe Designada</th>
                 {role === 'master' && <th className="px-6 py-4">Igreja</th>}
@@ -134,12 +134,12 @@ export default function TeacherList({ role }: { role: string }) {
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100">
+            <tbody className="divide-y divide-neutral-200/50">
               {filtered.map((teacher) => (
-                <tr key={teacher.id} className={`hover:bg-neutral-50 transition-colors group ${!teacher.active ? 'opacity-50' : ''}`}>
+                <tr key={teacher.id} className={`hover:bg-white/40 transition-colors group ${!teacher.active ? 'opacity-50' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${teacher.active ? 'bg-emerald-100 text-emerald-600' : 'bg-neutral-100 text-neutral-400'}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-sm ${teacher.active ? 'bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-700' : 'bg-neutral-100 text-neutral-400'}`}>
                         {teacher.name.charAt(0)}
                       </div>
                       <p className="text-sm font-bold text-neutral-800">{teacher.name}</p>
@@ -176,24 +176,24 @@ export default function TeacherList({ role }: { role: string }) {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+        <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2 }} className="glass-panel rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-white/60">
             <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Professor' : 'Novo Professor'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Nome Completo</label>
-                <input required type="text" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Nome Completo</label>
+                <input required type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Classe</label>
-                <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.class_id} onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Classe</label>
+                <select required className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm appearance-none" value={formData.class_id} onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}>
                   <option value="">Selecione a classe</option>
                   {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-neutral-200 rounded-xl font-medium">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium shadow-lg">Salvar</button>
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200/80 text-neutral-600 rounded-xl hover:bg-neutral-100 transition-all font-bold text-sm bg-white/50">Cancelar</button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 mt-0">Salvar</button>
               </div>
             </form>
           </motion.div>
