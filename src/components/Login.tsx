@@ -49,8 +49,8 @@ export default function Login({ onLogin }: LoginProps) {
         className="max-w-md w-full glass-panel rounded-[2rem] p-8 border border-white/60 relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-500/20 text-white rounded-2xl mb-4 ring-1 ring-white/50">
-            <ChurchIcon size={32} />
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-white/50 rounded-2xl mb-4 shadow-lg border border-white/60 p-2 overflow-hidden ring-1 ring-white/20">
+            <img src="/logo-transparent.png" alt="Logo ADMTN" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600">EBD Digital</h1>
           <p className="text-neutral-500 mt-2 text-sm">Gestão Inteligente para sua Escola Bíblica</p>

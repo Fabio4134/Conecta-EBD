@@ -57,7 +57,7 @@ export default function MagazineList({ role }: { role: string }) {
           <p className="text-neutral-500 text-sm italic serif">Catálogo de revistas bíblicas da CPAD.</p>
         </div>
         {role === 'master' && (
-          <button 
+          <button
             onClick={() => { setShowModal(true); setEditingId(null); }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
           >

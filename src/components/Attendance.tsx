@@ -176,7 +176,17 @@ export default function Attendance({ role }: { role: string }) {
                   <select
                     className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
                     value={selectedClassId}
-                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    onChange={(e) => {
+                      const classId = e.target.value;
+                      setSelectedClassId(classId);
+                      if (classId) {
+                        const cls = classes.find(c => c.id === parseInt(classId));
+                        if (cls && cls.magazine_id) {
+                          setSelectedMagazine(cls.magazine_id.toString());
+                          setSelectedLesson('');
+                        }
+                      }
+                    }}
                   >
                     <option value="">Selecione a classe</option>
                     {classes.map(c => (
@@ -240,8 +250,8 @@ export default function Attendance({ role }: { role: string }) {
                     key={student.id}
                     onClick={() => handleToggle(student.id)}
                     className={`flex items-center justify-between p-4 rounded-xl border transition-all ${attendance[student.id]
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                        : 'bg-white border-neutral-100 text-neutral-600 hover:border-neutral-200'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-white border-neutral-100 text-neutral-600 hover:border-neutral-200'
                       }`}
                   >
                     <div className="text-left">

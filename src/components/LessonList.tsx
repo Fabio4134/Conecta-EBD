@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api.js';
 import { Lesson, Magazine } from '../types.js';
-import { Plus, Trash2, Search, Edit2, BookOpen } from 'lucide-react';
+import { formatDate } from '../utils.js';
+import { Plus, Trash2, Search, Edit2, BookOpen, Eye, Calendar } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function LessonList({ role }: { role: string }) {
@@ -10,6 +11,8 @@ export default function LessonList({ role }: { role: string }) {
     const [search, setSearch] = useState('');
     const [selectedMagazineId, setSelectedMagazineId] = useState<number | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         magazine_id: '',
@@ -88,15 +91,13 @@ export default function LessonList({ role }: { role: string }) {
                     <h1 className="text-2xl font-bold text-neutral-900">Lições</h1>
                     <p className="text-neutral-500 text-sm italic serif">Cadastre as lições vinculadas às revistas.</p>
                 </div>
-                {role === 'master' && (
-                    <button
-                        onClick={() => { setShowModal(true); setEditingId(null); resetForm(); }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
-                    >
-                        <Plus size={18} />
-                        Nova Lição
-                    </button>
-                )}
+                <button
+                    onClick={() => { setShowModal(true); setEditingId(null); resetForm(); }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
+                >
+                    <Plus size={18} />
+                    Nova Lição
+                </button>
             </div>
 
             <div className="flex flex-wrap gap-4 pb-2">
@@ -150,58 +151,120 @@ export default function LessonList({ role }: { role: string }) {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
-                                <th className="px-6 py-4">Nº</th>
-                                <th className="px-6 py-4">Título</th>
-                                <th className="px-6 py-4">Revista</th>
-                                <th className="px-6 py-4">Data</th>
-                                <th className="px-6 py-4">Texto Áureo</th>
-                                {role === 'master' && <th className="px-6 py-4 text-right">Ações</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-200/50">
-                            {filtered.map((lesson) => (
-                                <tr key={lesson.id} className="hover:bg-white/40 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-                                            {lesson.number}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <p className="text-sm font-bold text-neutral-800">{lesson.title}</p>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded-lg font-bold">{lesson.magazine_title}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-neutral-500">{lesson.date}</td>
-                                    <td className="px-6 py-4 text-sm text-neutral-500 max-w-xs truncate">{lesson.golden_text}</td>
-                                    {role === 'master' && (
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleEdit(lesson)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button onClick={() => handleDelete(lesson.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                            {filtered.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-sm">Nenhuma lição encontrada.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                    {filtered.map((lesson) => (
+                        <div key={lesson.id} className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300 relative group overflow-hidden">
+                            {/* Decorative accent */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-purple-500/20"></div>
+
+                            <div>
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-bold shadow-sm">
+                                        {lesson.number}
+                                    </div>
+                                    <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 bg-white/60 text-neutral-500 rounded-lg font-bold border border-neutral-200/50">
+                                        {lesson.magazine_title}
+                                    </span>
+                                </div>
+                                <h3 className="text-lg font-bold text-neutral-800 leading-tight mb-2 line-clamp-2" title={lesson.title}>
+                                    {lesson.title}
+                                </h3>
+                                <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium bg-neutral-50/50 w-fit px-2 py-1 rounded-md">
+                                    <Calendar size={14} className="text-neutral-400" />
+                                    {formatDate(lesson.date)}
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        setSelectedLesson(lesson);
+                                        setShowDetailsModal(true);
+                                    }}
+                                    className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-xl text-sm font-bold shadow-md shadow-purple-500/20 hover:from-purple-500 hover:to-purple-400 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Eye size={16} />
+                                    <span>Ver</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleEdit(lesson)}
+                                    className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl transition-all shadow-sm"
+                                    title="Editar Lição"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(lesson.id)}
+                                    className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
+                                    title="Excluir Lição"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {filtered.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-neutral-400 text-sm glass-card rounded-2xl">
+                            Nenhuma lição encontrada para o filtro atual.
+                        </div>
+                    )}
                 </div>
             </div>
 
+            {/* Modal de Detalhes da Lição */}
+            {showDetailsModal && selectedLesson && (
+                <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2 }} className="glass-panel rounded-[2rem] p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-white/60">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 bg-purple-100 text-purple-600 rounded-lg font-bold mb-3 inline-block">
+                                    Revista: {selectedLesson.magazine_title}
+                                </span>
+                                <h2 className="text-2xl font-bold text-neutral-900 leading-tight">
+                                    <span className="text-purple-600 mr-2">#{selectedLesson.number}</span>
+                                    {selectedLesson.title}
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="glass-card p-4 rounded-2xl border-purple-100 bg-white/60">
+                                <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-1">Data da Lição</div>
+                                <div className="text-neutral-800 font-medium flex items-center gap-2">
+                                    <Calendar size={16} className="text-purple-500" />
+                                    {formatDate(selectedLesson.date)}
+                                </div>
+                            </div>
+
+                            <div className="glass-card p-4 rounded-2xl bg-white/60">
+                                <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-2">Texto Áureo</div>
+                                <p className="text-neutral-700 italic border-l-4 border-purple-300 pl-3 py-1">
+                                    "{selectedLesson.golden_text || 'Não informado'}"
+                                </p>
+                            </div>
+
+                            <div className="glass-card p-4 rounded-2xl bg-white/60">
+                                <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-2">Hinos Sugeridos</div>
+                                <p className="text-neutral-700 font-medium">
+                                    {selectedLesson.suggested_hymns || 'Não informado'}
+                                </p>
+                            </div>
+
+                            <div className="pt-4">
+                                <button
+                                    onClick={() => setShowDetailsModal(false)}
+                                    className="w-full py-3 bg-white border border-neutral-200/80 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-all font-bold text-sm shadow-sm"
+                                >
+                                    Fechar Detalhes
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Modal de Nova/Editar Lição */}
             {showModal && (
                 <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2 }} className="glass-panel rounded-[2rem] p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-white/60">

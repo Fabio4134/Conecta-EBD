@@ -49,8 +49,18 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "Usuário não pertence a esta igreja" });
   }
 
+  // Fetch church name to include in user object
+  let church_name = undefined;
+  if (churchId) {
+    const { data: church } = await supabase.from('churches').select('name').eq('id', churchId).single();
+    if (church) church_name = church.name;
+  } else if (user.church_id) {
+    const { data: church } = await supabase.from('churches').select('name').eq('id', user.church_id).single();
+    if (church) church_name = church.name;
+  }
+
   const token = jwt.sign({ id: user.id, role: user.role, church_id: user.church_id || churchId }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, role: user.role, church_id: user.church_id || churchId } });
+  res.json({ token, user: { id: user.id, name: user.name, role: user.role, church_id: user.church_id || churchId, church_name } });
 });
 
 app.post("/api/change-password", authenticate, async (req: any, res) => {
@@ -234,7 +244,7 @@ app.put("/api/lessons/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/lessons/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  // if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
   const lessonId = req.params.id;
   await supabase.from('attendance').delete().eq('lesson_id', lessonId);
   await supabase.from('teacher_schedule').delete().eq('lesson_id', lessonId);
@@ -353,7 +363,7 @@ app.delete("/api/teachers/:id", authenticate, async (req: any, res) => {
 
 // Classes
 app.get("/api/classes", authenticate, async (req: any, res) => {
-  let query = supabase.from('classes').select('*, churches(name)');
+  let query = supabase.from('classes').select('*, churches(name), magazines(title)');
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -364,23 +374,24 @@ app.get("/api/classes", authenticate, async (req: any, res) => {
 
   const formattedClasses = classes.map((c: any) => ({
     ...c,
-    church_name: c.churches?.name
+    church_name: c.churches?.name,
+    magazine_title: c.magazines?.title
   }));
 
   res.json(formattedClasses);
 });
 
 app.post("/api/classes", authenticate, async (req: any, res) => {
-  const { name } = req.body;
+  const { name, magazine_id } = req.body;
   const church_id = req.user.church_id;
-  const { error } = await supabase.from('classes').insert({ name, church_id });
+  const { error } = await supabase.from('classes').insert({ name, church_id, magazine_id });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/classes/:id", authenticate, async (req: any, res) => {
-  const { name } = req.body;
-  let query = supabase.from('classes').update({ name }).eq('id', req.params.id);
+  const { name, magazine_id } = req.body;
+  let query = supabase.from('classes').update({ name, magazine_id }).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);

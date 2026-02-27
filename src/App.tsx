@@ -18,6 +18,7 @@ import TeacherSchedule from './components/TeacherSchedule';
 import Attendance from './components/Attendance';
 import StudyMaterial from './components/StudyMaterial';
 import Reports from './components/Reports';
+import Statistics from './components/Statistics.js';
 import ChangePassword from './components/ChangePassword';
 import UserManagement from './components/UserManagement';
 import { User } from './types';
@@ -65,6 +66,7 @@ export default function App() {
       case 'chamadas': return <Attendance role={user.role} />;
       case 'material': return <StudyMaterial role={user.role} />;
       case 'relatorios': return <Reports role={user.role} />;
+      case 'estatisticas': return <Statistics role={user.role} />;
       case 'usuarios': return <UserManagement />;
       case 'senha': return <ChangePassword />;
       default: return <Dashboard role={user.role} />;
@@ -80,6 +82,7 @@ export default function App() {
           setIsSidebarOpen(false);
         }}
         role={user.role}
+        churchName={user.church_name}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}

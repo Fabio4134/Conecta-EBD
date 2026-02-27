@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
-  Layers, Calendar, CheckSquare, Download, BarChart2, LogOut, Key, X
+  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -15,12 +15,13 @@ interface SidebarProps {
   activeMenu: string;
   setActiveMenu: (menu: string) => void;
   role: 'master' | 'standard';
+  churchName?: string;
   onLogout: () => void;
   isOpen?: boolean;
   setIsOpen?: (isOpen: boolean) => void;
 }
 
-export default function Sidebar({ activeMenu, setActiveMenu, role, onLogout, isOpen, setIsOpen }: SidebarProps) {
+export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, onLogout, isOpen, setIsOpen }: SidebarProps) {
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
     { id: 'igreja', label: 'Igreja', icon: Church },
@@ -33,6 +34,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, onLogout, isO
     { id: 'chamadas', label: 'Chamadas', icon: CheckSquare },
     { id: 'material', label: 'Material de Apoio', icon: Download },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart2 },
+    { id: 'estatisticas', label: 'Estatísticas', icon: TrendingUp },
     ...(role === 'master' ? [{ id: 'usuarios', label: 'Usuários', icon: Users }] : []),
     { id: 'senha', label: 'Trocar Senha', icon: Key },
   ];
@@ -57,8 +59,8 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, onLogout, isO
         <div className="p-6 flex flex-col gap-6 relative z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-lg shadow-emerald-500/20 rounded-xl flex items-center justify-center text-white ring-1 ring-white/20">
-                <GraduationCap size={22} />
+              <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center p-1 border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
+                <img src="/logo-transparent.png" alt="Logo ADMTN" className="w-full h-full object-contain drop-shadow-md" />
               </div>
               <div>
                 <h1 className="text-white font-bold tracking-tight text-lg leading-tight">Conecta EBD</h1>
@@ -72,6 +74,14 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, onLogout, isO
               <X size={20} />
             </button>
           </div>
+
+          {churchName && (
+            <div className="w-full px-1">
+              <p className="text-emerald-400 font-semibold text-xs leading-relaxed italic border-l-2 border-emerald-500/50 pl-3 py-0.5 opacity-90">
+                {churchName}
+              </p>
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto custom-scrollbar relative z-10">

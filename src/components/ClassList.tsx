@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api.js';
-import { Class, Teacher, Student } from '../types.js';
+import { Class, Teacher, Student, Magazine } from '../types.js';
 import {
     Plus, Trash2, Search, Edit2, BookOpen, Power, PowerOff, Eye, ArrowLeft,
     Users, Download, GraduationCap
@@ -14,7 +14,8 @@ export default function ClassList({ role }: { role: string }) {
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [formData, setFormData] = useState({ name: '' });
+    const [formData, setFormData] = useState<{ name: string; magazine_id: number | string }>({ name: '', magazine_id: '' });
+    const [magazines, setMagazines] = useState<Magazine[]>([]);
 
     // Detail view
     const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -25,8 +26,16 @@ export default function ClassList({ role }: { role: string }) {
     useEffect(() => { fetchData(); }, []);
 
     const fetchData = async () => {
-        const res = await api.get('/classes');
-        setClasses(res.data);
+        try {
+            const [clsRes, magRes] = await Promise.all([
+                api.get('/classes'),
+                api.get('/magazines')
+            ]);
+            setClasses(clsRes.data);
+            setMagazines(magRes.data);
+        } catch (error) {
+            console.error('Error fetching class data:', error);
+        }
     };
 
     const handleViewClass = async (cls: Class) => {
@@ -105,7 +114,7 @@ export default function ClassList({ role }: { role: string }) {
             }
             setShowModal(false);
             setEditingId(null);
-            setFormData({ name: '' });
+            setFormData({ name: '', magazine_id: '' });
             fetchData();
         } catch (err: any) {
             alert(err.response?.data?.error || 'Erro ao salvar classe');
@@ -114,7 +123,7 @@ export default function ClassList({ role }: { role: string }) {
 
     const handleEdit = (cls: Class) => {
         setEditingId(cls.id);
-        setFormData({ name: cls.name });
+        setFormData({ name: cls.name, magazine_id: cls.magazine_id || '' });
         setShowModal(true);
     };
 
@@ -254,7 +263,7 @@ export default function ClassList({ role }: { role: string }) {
                     <p className="text-neutral-500 text-sm italic serif">Gerencie as turmas da Escola Bíblica Dominical.</p>
                 </div>
                 <button
-                    onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '' }); }}
+                    onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', magazine_id: '' }); }}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
                 >
                     <Plus size={18} />
@@ -290,6 +299,12 @@ export default function ClassList({ role }: { role: string }) {
                                             </div>
                                             <p className="text-sm font-bold text-neutral-800">{cls.name}</p>
                                         </div>
+                                        {cls.magazine_title && (
+                                            <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500 font-medium">
+                                                <BookOpen size={12} className="text-emerald-500" />
+                                                Revista: {cls.magazine_title}
+                                            </div>
+                                        )}
                                     </td>
                                     {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{cls.church_name}</td>}
                                     <td className="px-6 py-4">
@@ -331,6 +346,19 @@ export default function ClassList({ role }: { role: string }) {
                             <div className="space-y-1.5">
                                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Nome da Classe</label>
                                 <input required type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Vincular Revista (Opcional)</label>
+                                <select
+                                    className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm text-neutral-700"
+                                    value={formData.magazine_id || ''}
+                                    onChange={(e) => setFormData({ ...formData, magazine_id: e.target.value ? Number(e.target.value) : '' })}
+                                >
+                                    <option value="">Nenhuma revista (Todas as lições visíveis)</option>
+                                    {magazines.map(m => (
+                                        <option key={m.id} value={m.id}>{m.title} ({m.quarter}º Tri/{m.year})</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200/80 text-neutral-600 rounded-xl hover:bg-neutral-100 transition-all font-bold text-sm bg-white/50">Cancelar</button>

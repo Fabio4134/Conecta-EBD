@@ -22,6 +22,8 @@ export interface Class {
   church_id: number;
   church_name?: string;
   active: boolean;
+  magazine_id?: number | null;
+  magazine_title?: string;
 }
 
 export interface Teacher {
