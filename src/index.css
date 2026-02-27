@@ -19,11 +19,11 @@
 
 @layer utilities {
   .glass-panel {
-    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:bg-neutral-900/60 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.12)];
+    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
   }
   
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:bg-neutral-900/50 dark:border-white/10;
+    @apply bg-white/70 backdrop-blur-md border border-white/60 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
   }
   
   .premium-gradient {
@@ -41,10 +41,10 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-neutral-300 rounded-full dark:bg-neutral-700;
+    @apply bg-neutral-300 rounded-full;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral-400 dark:bg-neutral-600;
+    @apply bg-neutral-400;
   }
 }
