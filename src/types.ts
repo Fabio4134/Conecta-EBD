@@ -99,3 +99,15 @@ export interface ScheduleRecord {
   lesson_title?: string;
   church_name?: string;
 }
+
+export interface Suggestion {
+  id: number;
+  user_id: number;
+  church_id: number;
+  text: string;
+  status: 'pending' | 'answered';
+  answer?: string;
+  created_at: string;
+  user_name?: string;
+  church_name?: string;
+}

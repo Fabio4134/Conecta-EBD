@@ -621,6 +621,45 @@ app.delete("/api/materials/:id", authenticate, async (req: any, res) => {
   }
 });
 
+// Suggestions
+app.get("/api/suggestions", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+
+  const { data: suggestions, error } = await supabase
+    .from('suggestions')
+    .select('*, users(name), churches(name)')
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const formattedSuggestions = suggestions.map((s: any) => ({
+    ...s,
+    user_name: s.users?.name,
+    church_name: s.churches?.name
+  }));
+
+  res.json(formattedSuggestions);
+});
+
+app.post("/api/suggestions", authenticate, async (req: any, res) => {
+  const { text } = req.body;
+  const user_id = req.user.id;
+  const church_id = req.user.church_id;
+
+  const { error } = await supabase.from('suggestions').insert({ user_id, church_id, text, status: 'pending' });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.put("/api/suggestions/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  const { answer } = req.body;
+
+  const { error } = await supabase.from('suggestions').update({ answer, status: 'answered' }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 // Teacher Schedule
 app.get("/api/schedule", authenticate, async (req: any, res) => {
   let query = supabase.from('teacher_schedule').select('*, teachers(name), classes(name), lessons(title), churches(name)');

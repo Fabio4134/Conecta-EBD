@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
-  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X
+  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X, MessageSquare
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -35,6 +35,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     { id: 'material', label: 'Material de Apoio', icon: Download },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart2 },
     { id: 'estatisticas', label: 'Estatísticas', icon: TrendingUp },
+    { id: 'sugestoes', label: 'Sugestões e ajustes', icon: MessageSquare },
     ...(role === 'master' ? [{ id: 'usuarios', label: 'Usuários', icon: Users }] : []),
     { id: 'senha', label: 'Trocar Senha', icon: Key },
   ];

@@ -21,6 +21,7 @@ import Reports from './components/Reports';
 import Statistics from './components/Statistics.js';
 import ChangePassword from './components/ChangePassword';
 import UserManagement from './components/UserManagement';
+import Suggestions from './components/Suggestions';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -67,6 +68,7 @@ export default function App() {
       case 'material': return <StudyMaterial role={user.role} />;
       case 'relatorios': return <Reports role={user.role} />;
       case 'estatisticas': return <Statistics role={user.role} />;
+      case 'sugestoes': return <Suggestions role={user.role} />;
       case 'usuarios': return <UserManagement />;
       case 'senha': return <ChangePassword />;
       default: return <Dashboard role={user.role} />;
