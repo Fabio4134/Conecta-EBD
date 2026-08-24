@@ -11,6 +11,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Força a remoção da Vercel Toolbar caso ela seja injetada
+      const removeVercelToolbar = () => {
+        const toolbar = document.querySelector('vercel-live') || document.querySelector('vercel-toolbar');
+        if (toolbar) {
+          toolbar.remove();
+        }
+      };
+      
+      // Verifica e remove periodicamente por alguns segundos após o carregamento
+      setInterval(removeVercelToolbar, 500);
+      setTimeout(() => clearInterval(removeVercelToolbar), 10000);
+    </script>
   </body>
 </html>
 
