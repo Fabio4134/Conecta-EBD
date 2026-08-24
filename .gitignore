@@ -5,5 +5,3 @@ ebd.db
 uploads/
 .vite/
 .vercel
-project.zip
-scripts/upload_to_supabase.ps1
