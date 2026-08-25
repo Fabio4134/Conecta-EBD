@@ -63,7 +63,9 @@ export interface Magazine {
   title: string;
   quarter: string;
   year: number;
+  category?: string;
 }
+
 
 export interface Lesson {
   id: number;

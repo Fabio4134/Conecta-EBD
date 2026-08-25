@@ -269,21 +269,37 @@ app.put("/api/churches/:id/profile", authenticate, async (req: any, res) => {
 
 // Magazines
 app.get("/api/magazines", authenticate, async (req, res) => {
-  const { data: magazines, error } = await supabase.from('magazines').select('*');
+  const { data: magazines, error } = await supabase.from('magazines').select('*').order('year', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(magazines);
 });
 
 app.post("/api/magazines", authenticate, async (req: any, res) => {
-  const { title, quarter, year } = req.body;
-  const { error } = await supabase.from('magazines').insert({ title, quarter, year });
+  const { title, quarter, year, category } = req.body;
+  const insertPayload: any = { title, quarter, year: parseInt(year) || new Date().getFullYear() };
+  if (category) insertPayload.category = category;
+
+  let { error } = await supabase.from('magazines').insert(insertPayload);
+  if (error && error.message?.includes('category')) {
+    delete insertPayload.category;
+    const retry = await supabase.from('magazines').insert(insertPayload);
+    error = retry.error;
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/magazines/:id", authenticate, async (req: any, res) => {
-  const { title, quarter, year } = req.body;
-  const { error } = await supabase.from('magazines').update({ title, quarter, year }).eq('id', req.params.id);
+  const { title, quarter, year, category } = req.body;
+  const updatePayload: any = { title, quarter, year: parseInt(year) || new Date().getFullYear() };
+  if (category !== undefined) updatePayload.category = category;
+
+  let { error } = await supabase.from('magazines').update(updatePayload).eq('id', req.params.id);
+  if (error && error.message?.includes('category')) {
+    delete updatePayload.category;
+    const retry = await supabase.from('magazines').update(updatePayload).eq('id', req.params.id);
+    error = retry.error;
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
@@ -314,15 +330,25 @@ app.post("/api/magazines/import-ai", authenticate, async (req: any, res) => {
   }
 
   // 1. Cadastra a revista
-  const { data: magData, error: magError } = await supabase
+  const magInsert: any = {
+    title: magazine.title,
+    quarter: magazine.quarter,
+    year: parseInt(magazine.year) || new Date().getFullYear()
+  };
+  if (magazine.category) magInsert.category = magazine.category;
+
+  let { data: magData, error: magError } = await supabase
     .from('magazines')
-    .insert({
-      title: magazine.title,
-      quarter: magazine.quarter,
-      year: parseInt(magazine.year) || new Date().getFullYear()
-    })
+    .insert(magInsert)
     .select()
     .single();
+
+  if (magError && magError.message?.includes('category')) {
+    delete magInsert.category;
+    const retry = await supabase.from('magazines').insert(magInsert).select().single();
+    magData = retry.data;
+    magError = retry.error;
+  }
 
   if (magError || !magData) {
     return res.status(500).json({ error: "Erro ao cadastrar revista: " + (magError?.message || "erro desconhecido") });
