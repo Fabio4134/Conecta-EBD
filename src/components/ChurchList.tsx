@@ -4,7 +4,7 @@ import { Church, Sector } from '../types';
 import { Plus, Trash2, Search, Edit2, Church as ChurchIcon, Users, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export default function ChurchList({ role }: { role: string }) {
+export default function ChurchList({ role, churchId }: { role: string; churchId?: number }) {
     const [churches, setChurches] = useState<Church[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [search, setSearch] = useState('');
@@ -21,6 +21,7 @@ export default function ChurchList({ role }: { role: string }) {
     };
 
     const fetchSectors = async () => {
+        if (role !== 'master') return;
         try {
             const res = await api.get('/sectors');
             setSectors(res.data);
@@ -69,6 +70,10 @@ export default function ChurchList({ role }: { role: string }) {
     };
 
     const filtered = churches.filter(c => {
+        // Usuário standard só vê a própria congregação
+        if (role !== 'master') {
+            return c.id === churchId;
+        }
         const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
             c.type?.toLowerCase().includes(search.toLowerCase()) ||
             c.pastor?.toLowerCase().includes(search.toLowerCase());
@@ -80,8 +85,12 @@ export default function ChurchList({ role }: { role: string }) {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Igrejas</h1>
-                    <p className="text-neutral-500 text-sm italic serif">Gerencie as igrejas cadastradas no sistema.</p>
+                    <h1 className="text-2xl font-bold text-neutral-900">
+                        {role === 'master' ? 'Igrejas' : 'Minha Congregação'}
+                    </h1>
+                    <p className="text-neutral-500 text-sm italic serif">
+                        {role === 'master' ? 'Gerencie todas as igrejas cadastradas no sistema.' : 'Informações da sua congregação vinculada.'}
+                    </p>
                 </div>
                 {role === 'master' && (
                     <button
@@ -95,31 +104,33 @@ export default function ChurchList({ role }: { role: string }) {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-                <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-2 flex-1">
-                        <Search size={16} className="text-neutral-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nome, tipo ou pastor..."
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-                    {sectors.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <MapPin size={14} className="text-neutral-400" />
-                            <select
-                                value={filterSector}
-                                onChange={e => setFilterSector(e.target.value)}
-                                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
-                            >
-                                <option value="">Todos os setores</option>
-                                {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
+                {role === 'master' && (
+                    <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-2 flex-1">
+                            <Search size={16} className="text-neutral-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar por nome, tipo ou pastor..."
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
-                    )}
-                </div>
+                        {sectors.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <MapPin size={14} className="text-neutral-400" />
+                                <select
+                                    value={filterSector}
+                                    onChange={e => setFilterSector(e.target.value)}
+                                    className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
+                                >
+                                    <option value="">Todos os setores</option>
+                                    {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">

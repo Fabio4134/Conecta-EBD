@@ -61,7 +61,7 @@ export default function App() {
       case 'inicio': return <Dashboard role={user.role} />;
       case 'setores': return <SectorList role={user.role} />;
       case 'perfil': return <ChurchProfile user={user} />;
-      case 'igreja': return <ChurchList role={user.role} />;
+      case 'igreja': return <ChurchList role={user.role} churchId={user.church_id} />;
       case 'revistas': return <MagazineList role={user.role} />;
       case 'licoes': return <LessonList role={user.role} />;
       case 'professores': return <TeacherList role={user.role} />;
