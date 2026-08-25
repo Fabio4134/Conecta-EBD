@@ -13,6 +13,7 @@ export interface Church {
   members?: number;
   sector_id?: number;
   sector_name?: string;
+  logo_url?: string;
 }
 
 

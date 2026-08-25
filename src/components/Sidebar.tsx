@@ -1,7 +1,8 @@
 import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
-  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X, MessageSquare, MapPin
+  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp,
+  LogOut, Key, X, MessageSquare, MapPin, Building2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -25,6 +26,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
     ...(role === 'master' ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
+    { id: 'perfil', label: 'Editar Perfil', icon: Building2 },
     { id: 'igreja', label: 'Igreja', icon: Church },
     { id: 'revistas', label: 'Revistas e Temas', icon: BookOpen },
     { id: 'licoes', label: 'Lições e Temas', icon: FileText },

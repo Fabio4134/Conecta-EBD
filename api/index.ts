@@ -227,6 +227,44 @@ app.delete("/api/churches/:id", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
+// Church Profile — atualiza nome e logo (master ou dono da congregação)
+app.put("/api/churches/:id/profile", authenticate, async (req: any, res) => {
+  const churchId = parseInt(req.params.id);
+
+  // Verifica permissão: master pode editar qualquer uma; standard só a própria
+  if (req.user.role !== 'master' && req.user.church_id !== churchId) {
+    return res.status(403).json({ error: "Você só pode editar o perfil da sua própria congregação." });
+  }
+
+  const { name, logo_base64, logo_mime } = req.body;
+  let logo_url: string | undefined;
+
+  // Se enviou imagem nova, faz upload no Supabase Storage
+  if (logo_base64 && logo_mime) {
+    const buffer = Buffer.from(logo_base64, 'base64');
+    const ext = logo_mime.split('/')[1] || 'png';
+    const filePath = `church-logos/${churchId}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('conecta_ebd')
+      .upload(filePath, buffer, { contentType: logo_mime, upsert: true });
+
+    if (uploadError) return res.status(500).json({ error: "Erro ao fazer upload da logo: " + uploadError.message });
+
+    const { data: urlData } = supabase.storage.from('conecta_ebd').getPublicUrl(filePath);
+    logo_url = urlData.publicUrl + `?t=${Date.now()}`; // cache bust
+  }
+
+  const updateData: any = {};
+  if (name) updateData.name = name;
+  if (logo_url) updateData.logo_url = logo_url;
+
+  const { error } = await supabase.from('churches').update(updateData).eq('id', churchId);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ success: true, logo_url });
+});
+
 // Magazines
 app.get("/api/magazines", authenticate, async (req, res) => {
   const { data: magazines, error } = await supabase.from('magazines').select('*');
