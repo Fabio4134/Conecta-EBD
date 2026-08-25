@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Church } from '../types';
-import { Church as ChurchIcon, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { Church as ChurchIcon, Lock, Mail } from 'lucide-react';
 import { motion } from 'motion/react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || '',
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+);
 
 interface LoginProps {
   onLogin: (user: any) => void;
@@ -17,7 +23,15 @@ export default function Login({ onLogin }: LoginProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get('/churches').then(res => setChurches(res.data));
+    // Busca igrejas diretamente no Supabase (rota pública, sem autenticação)
+    supabase
+      .from('churches')
+      .select('id, name, type')
+      .order('name', { ascending: true })
+      .then(({ data, error }) => {
+        if (data) setChurches(data);
+        if (error) console.error('Erro ao buscar igrejas:', error.message);
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
