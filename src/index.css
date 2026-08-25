@@ -48,11 +48,18 @@
     @apply bg-neutral-400;
   }
 
-  /* Oculta a Vercel Toolbar injetada automaticamente */
+  /* Oculta a Vercel Toolbar e botão PWA injetados automaticamente */
   vercel-live,
   #vercel-toolbar,
   .__vercel-toolbar,
-  .vercel-toolbar-container {
+  .vercel-toolbar-container,
+  #pwa-toast,
+  .pwa-toast,
+  [data-pwa-install],
+  .pwa-install-btn {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 }

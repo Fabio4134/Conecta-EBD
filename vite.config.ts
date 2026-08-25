@@ -13,7 +13,11 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: 'auto',
         includeAssets: ['logo-transparent.png', 'logo.png.png'],
+        devOptions: {
+          enabled: false
+        },
         manifest: {
           name: 'Conecta EBD',
           short_name: 'Conecta',
