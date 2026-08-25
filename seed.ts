@@ -30,7 +30,7 @@ const churchesData = [
     { name: "ADMTN - VILA DOIS IRMÃOS", type: "Filial", pastor: "PB. JONATAS FERREIRA", members: 76 },
     { name: "ADMTN - VILA MOISÉS", type: "Filial", pastor: "Pb. Augusto Spinóla", members: 61 },
     { name: "ADMTN - TANCREDO NEVES 2", type: "Filial", pastor: "Pr. Domingos Prado", members: 82 },
-    { name: "ADMTN - TEMPLO CENTRAL", type: "Sede", pastor: "Pr. Felipe Carvalho das Virgens", members: 399 }
+    { name: "ADMTN - SEDE SETORIAL", type: "Sede", pastor: "Pr. Felipe Carvalho das Virgens", members: 399 }
 ];
 
 async function seed() {
