@@ -1,10 +1,20 @@
+export interface Sector {
+  id: number;
+  name: string;
+  description?: string;
+  church_count?: number;
+}
+
 export interface Church {
   id: number;
   name: string;
   type: string;
   pastor?: string;
   members?: number;
+  sector_id?: number;
+  sector_name?: string;
 }
+
 
 export interface User {
   id: number;

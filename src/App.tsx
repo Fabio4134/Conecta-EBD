@@ -22,6 +22,7 @@ import Statistics from './components/Statistics.js';
 import ChangePassword from './components/ChangePassword';
 import UserManagement from './components/UserManagement';
 import Suggestions from './components/Suggestions';
+import SectorList from './components/SectorList';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -57,6 +58,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeMenu) {
       case 'inicio': return <Dashboard role={user.role} />;
+      case 'setores': return <SectorList role={user.role} />;
       case 'igreja': return <ChurchList role={user.role} />;
       case 'revistas': return <MagazineList role={user.role} />;
       case 'licoes': return <LessonList role={user.role} />;

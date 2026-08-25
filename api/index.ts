@@ -141,25 +141,73 @@ app.patch("/api/classes/:id/toggle", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
-// Churches
-app.get("/api/churches", async (req, res) => {
-  const { data: churches, error } = await supabase.from('churches').select('*');
+// Sectors
+app.get("/api/sectors", async (req, res) => {
+  const { data: sectors, error } = await supabase
+    .from('sectors')
+    .select('id, name, description, created_at')
+    .order('name', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(churches);
+
+  // Conta igrejas por setor
+  const result = await Promise.all((sectors || []).map(async (s: any) => {
+    const { count } = await supabase.from('churches').select('*', { count: 'exact', head: true }).eq('sector_id', s.id);
+    return { ...s, church_count: count || 0 };
+  }));
+
+  res.json(result);
+});
+
+app.post("/api/sectors", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  const { name, description } = req.body;
+  const { error } = await supabase.from('sectors').insert({ name, description });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.put("/api/sectors/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  const { name, description } = req.body;
+  const { error } = await supabase.from('sectors').update({ name, description }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.delete("/api/sectors/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  const { data: churches } = await supabase.from('churches').select('id').eq('sector_id', req.params.id);
+  if (churches && churches.length > 0) {
+    return res.status(400).json({ error: "Não é possível excluir um setor com congregações vinculadas." });
+  }
+  const { error } = await supabase.from('sectors').delete().eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// Churches
+app.get("/api/churches", async (req: any, res) => {
+  const { sector_id } = req.query;
+  let query = supabase.from('churches').select('*, sectors(name)').order('name', { ascending: true });
+  if (sector_id) query = query.eq('sector_id', sector_id);
+  const { data: churches, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  const formatted = (churches || []).map((c: any) => ({ ...c, sector_name: c.sectors?.name }));
+  res.json(formatted);
 });
 
 app.post("/api/churches", authenticate, async (req: any, res) => {
   if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
-  const { name, type, pastor, members } = req.body;
-  const { error } = await supabase.from('churches').insert({ name, type, pastor, members: members || 0 });
+  const { name, type, pastor, members, sector_id } = req.body;
+  const { error } = await supabase.from('churches').insert({ name, type, pastor, members: members || 0, sector_id: sector_id || null });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/churches/:id", authenticate, async (req: any, res) => {
   if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
-  const { name, type, pastor, members } = req.body;
-  const { error } = await supabase.from('churches').update({ name, type, pastor, members: members || 0 }).eq('id', req.params.id);
+  const { name, type, pastor, members, sector_id } = req.body;
+  const { error } = await supabase.from('churches').update({ name, type, pastor, members: members || 0, sector_id: sector_id || null }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });

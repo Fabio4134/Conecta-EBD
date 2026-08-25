@@ -1,34 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Church } from '../types';
-import { Plus, Trash2, Search, Edit2, Church as ChurchIcon, Users } from 'lucide-react';
+import { Church, Sector } from '../types';
+import { Plus, Trash2, Search, Edit2, Church as ChurchIcon, Users, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function ChurchList({ role }: { role: string }) {
     const [churches, setChurches] = useState<Church[]>([]);
+    const [sectors, setSectors] = useState<Sector[]>([]);
     const [search, setSearch] = useState('');
+    const [filterSector, setFilterSector] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [formData, setFormData] = useState({ name: '', type: '', pastor: '', members: '' });
+    const [formData, setFormData] = useState({ name: '', type: '', pastor: '', members: '', sector_id: '' });
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); fetchSectors(); }, []);
 
     const fetchData = async () => {
         const res = await api.get('/churches');
         setChurches(res.data);
     };
 
+    const fetchSectors = async () => {
+        try {
+            const res = await api.get('/sectors');
+            setSectors(res.data);
+        } catch { /* silencioso */ }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const payload = { ...formData, sector_id: formData.sector_id || null };
             if (editingId) {
-                await api.put(`/churches/${editingId}`, formData);
+                await api.put(`/churches/${editingId}`, payload);
             } else {
-                await api.post('/churches', formData);
+                await api.post('/churches', payload);
             }
             setShowModal(false);
             setEditingId(null);
-            setFormData({ name: '', type: '', pastor: '', members: '' });
+            setFormData({ name: '', type: '', pastor: '', members: '', sector_id: '' });
             fetchData();
         } catch (err: any) {
             alert(err.response?.data?.error || 'Erro ao salvar igreja');
@@ -41,7 +51,8 @@ export default function ChurchList({ role }: { role: string }) {
             name: church.name,
             type: church.type,
             pastor: church.pastor || '',
-            members: (church.members || '').toString()
+            members: (church.members || '').toString(),
+            sector_id: church.sector_id?.toString() || ''
         });
         setShowModal(true);
     };
@@ -57,11 +68,13 @@ export default function ChurchList({ role }: { role: string }) {
         }
     };
 
-    const filtered = churches.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.type?.toLowerCase().includes(search.toLowerCase()) ||
-        c.pastor?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = churches.filter(c => {
+        const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+            c.type?.toLowerCase().includes(search.toLowerCase()) ||
+            c.pastor?.toLowerCase().includes(search.toLowerCase());
+        const matchSector = filterSector ? c.sector_id?.toString() === filterSector : true;
+        return matchSearch && matchSector;
+    });
 
     return (
         <div className="space-y-6">
@@ -72,7 +85,7 @@ export default function ChurchList({ role }: { role: string }) {
                 </div>
                 {role === 'master' && (
                     <button
-                        onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', type: '', pastor: '', members: '' }); }}
+                        onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', type: '', pastor: '', members: '', sector_id: '' }); }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
                     >
                         <Plus size={18} />
@@ -82,15 +95,30 @@ export default function ChurchList({ role }: { role: string }) {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-                <div className="p-4 border-b border-neutral-100 flex items-center gap-3">
-                    <Search size={18} className="text-neutral-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome, tipo ou pastor..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                        <Search size={16} className="text-neutral-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome, tipo ou pastor..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    {sectors.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <MapPin size={14} className="text-neutral-400" />
+                            <select
+                                value={filterSector}
+                                onChange={e => setFilterSector(e.target.value)}
+                                className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
+                            >
+                                <option value="">Todos os setores</option>
+                                {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -98,6 +126,7 @@ export default function ChurchList({ role }: { role: string }) {
                         <thead>
                             <tr className="bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-400 font-bold">
                                 <th className="px-6 py-4">Igreja</th>
+                                <th className="px-6 py-4">Setor</th>
                                 <th className="px-6 py-4">Tipo</th>
                                 <th className="px-6 py-4">Pastor</th>
                                 <th className="px-6 py-4">Membros</th>
@@ -114,6 +143,15 @@ export default function ChurchList({ role }: { role: string }) {
                                             </div>
                                             <p className="text-sm font-bold text-neutral-800">{church.name}</p>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {church.sector_name ? (
+                                            <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg font-medium w-fit">
+                                                <MapPin size={11} /> {church.sector_name}
+                                            </span>
+                                        ) : (
+                                            <span className="text-neutral-400 text-xs">—</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg font-bold uppercase tracking-widest">{church.type}</span>
@@ -141,7 +179,7 @@ export default function ChurchList({ role }: { role: string }) {
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-neutral-400 text-sm">Nenhuma igreja encontrada.</td>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-sm">Nenhuma igreja encontrada.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -155,11 +193,18 @@ export default function ChurchList({ role }: { role: string }) {
                         <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Igreja' : 'Nova Igreja'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Nome da Igreja</label>
+                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Setor *</label>
+                                <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.sector_id} onChange={(e) => setFormData({ ...formData, sector_id: e.target.value })}>
+                                    <option value="">Selecione o setor</option>
+                                    {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Nome da Igreja *</label>
                                 <input required type="text" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Tipo</label>
+                                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Tipo *</label>
                                 <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
                                     <option value="">Selecione o tipo</option>
                                     <option value="Sede">Sede</option>

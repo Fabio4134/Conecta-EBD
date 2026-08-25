@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
-  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X, MessageSquare
+  Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp, LogOut, Key, X, MessageSquare, MapPin
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -24,6 +24,7 @@ interface SidebarProps {
 export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, onLogout, isOpen, setIsOpen }: SidebarProps) {
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
+    ...(role === 'master' ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
     { id: 'igreja', label: 'Igreja', icon: Church },
     { id: 'revistas', label: 'Revistas e Temas', icon: BookOpen },
     { id: 'licoes', label: 'Lições e Temas', icon: FileText },
@@ -39,6 +40,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     ...(role === 'master' ? [{ id: 'usuarios', label: 'Usuários', icon: Users }] : []),
     { id: 'senha', label: 'Trocar Senha', icon: Key },
   ];
+
 
   return (
     <>
