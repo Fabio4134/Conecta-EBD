@@ -24,6 +24,7 @@ import UserManagement from './components/UserManagement';
 import Suggestions from './components/Suggestions';
 import SectorList from './components/SectorList';
 import ChurchProfile from './components/ChurchProfile';
+import MagazineAIGenerator from './components/MagazineAIGenerator';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -62,6 +63,7 @@ export default function App() {
       case 'setores': return <SectorList role={user.role} />;
       case 'perfil': return <ChurchProfile user={user} />;
       case 'igreja': return <ChurchList role={user.role} churchId={user.church_id} />;
+      case 'gerador_ia': return <MagazineAIGenerator onNavigateToLessons={() => setActiveMenu('licoes')} />;
       case 'revistas': return <MagazineList role={user.role} />;
       case 'licoes': return <LessonList role={user.role} />;
       case 'professores': return <TeacherList role={user.role} />;

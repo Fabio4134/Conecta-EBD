@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
   Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp,
-  LogOut, Key, X, MessageSquare, MapPin, Building2
+  LogOut, Key, X, MessageSquare, MapPin, Building2, Sparkles
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -28,6 +28,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     ...(role === 'master' ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
     { id: 'perfil', label: 'Editar Perfil', icon: Building2 },
     { id: 'igreja', label: 'Igreja', icon: Church },
+    { id: 'gerador_ia', label: 'Gerador IA de Lições', icon: Sparkles },
     { id: 'revistas', label: 'Revistas e Temas', icon: BookOpen },
     { id: 'licoes', label: 'Lições e Temas', icon: FileText },
     { id: 'classes', label: 'Classes', icon: Layers },
@@ -42,6 +43,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     ...(role === 'master' ? [{ id: 'usuarios', label: 'Usuários', icon: Users }] : []),
     { id: 'senha', label: 'Trocar Senha', icon: Key },
   ];
+
 
 
   return (

@@ -304,6 +304,66 @@ app.delete("/api/magazines/:id", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
+// Importação Completa de Revista + 13 Lições via IA
+app.post("/api/magazines/import-ai", authenticate, async (req: any, res) => {
+  const { magazine, lessons } = req.body;
+  if (!magazine?.title || !magazine?.quarter || !magazine?.year) {
+    return res.status(400).json({ error: "Dados da revista incompletos (título, trimestre e ano são obrigatórios)." });
+  }
+
+  if (!Array.isArray(lessons) || lessons.length === 0) {
+    return res.status(400).json({ error: "Nenhuma lição fornecida para importação." });
+  }
+
+  // 1. Cadastra a revista
+  const { data: magData, error: magError } = await supabase
+    .from('magazines')
+    .insert({
+      title: magazine.title,
+      quarter: magazine.quarter,
+      year: parseInt(magazine.year) || new Date().getFullYear()
+    })
+    .select()
+    .single();
+
+  if (magError || !magData) {
+    return res.status(500).json({ error: "Erro ao cadastrar revista: " + (magError?.message || "erro desconhecido") });
+  }
+
+  const magazineId = magData.id;
+
+  // 2. Prepara as lições para inserção
+  const lessonsToInsert = lessons.map((l: any, index: number) => {
+    // Formata o texto áureo e verdade prática de forma rica
+    let goldenText = l.golden_text || '';
+    if (l.practical_truth) {
+      goldenText = goldenText + (goldenText ? '\n\n' : '') + `[Verdade Prática]: ${l.practical_truth}`;
+    }
+
+    return {
+      magazine_id: magazineId,
+      number: parseInt(l.number) || (index + 1),
+      title: l.title || `Lição ${index + 1}`,
+      date: l.date || null,
+      golden_text: goldenText,
+      suggested_hymns: l.suggested_hymns || 'Hinos da Harpa'
+    };
+  });
+
+  const { error: lessonsError } = await supabase.from('lessons').insert(lessonsToInsert);
+  if (lessonsError) {
+    return res.status(500).json({ error: "Revista criada, mas houve erro ao inserir as lições: " + lessonsError.message });
+  }
+
+  res.json({
+    success: true,
+    magazine: magData,
+    count: lessonsToInsert.length,
+    message: `Revista "${magData.title}" e ${lessonsToInsert.length} lições cadastradas com sucesso!`
+  });
+});
+
+
 // Lessons
 app.get("/api/lessons", authenticate, async (req, res) => {
   const { data: lessons, error } = await supabase.from('lessons').select('*, magazines(title)');

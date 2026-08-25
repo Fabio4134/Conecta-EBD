@@ -72,6 +72,7 @@ export interface Lesson {
   title: string;
   date: string;
   golden_text: string;
+  practical_truth?: string;
   suggested_hymns: string;
   magazine_title?: string;
 }

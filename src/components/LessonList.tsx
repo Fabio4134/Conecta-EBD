@@ -238,15 +238,26 @@ export default function LessonList({ role }: { role: string }) {
                             </div>
 
                             <div className="glass-card p-4 rounded-2xl bg-white/60">
-                                <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-2">Texto Áureo</div>
-                                <p className="text-neutral-700 italic border-l-4 border-purple-300 pl-3 py-1">
-                                    "{selectedLesson.golden_text || 'Não informado'}"
+                                <div className="text-[10px] uppercase tracking-widest text-emerald-600 font-bold mb-2">Texto Áureo</div>
+                                <p className="text-neutral-700 italic border-l-4 border-emerald-400 pl-3 py-1 text-sm leading-relaxed">
+                                    {selectedLesson.golden_text?.includes('[Verdade Prática]:')
+                                      ? selectedLesson.golden_text.split('[Verdade Prática]:')[0].trim()
+                                      : (selectedLesson.golden_text || 'Não informado')}
                                 </p>
                             </div>
 
+                            {selectedLesson.golden_text?.includes('[Verdade Prática]:') && (
+                              <div className="glass-card p-4 rounded-2xl bg-white/60">
+                                  <div className="text-[10px] uppercase tracking-widest text-amber-600 font-bold mb-2">Verdade Prática</div>
+                                  <p className="text-neutral-700 border-l-4 border-amber-400 pl-3 py-1 text-sm leading-relaxed">
+                                      {selectedLesson.golden_text.split('[Verdade Prática]:')[1].trim()}
+                                  </p>
+                              </div>
+                            )}
+
                             <div className="glass-card p-4 rounded-2xl bg-white/60">
                                 <div className="text-[10px] uppercase tracking-widest text-neutral-400 font-bold mb-2">Hinos Sugeridos</div>
-                                <p className="text-neutral-700 font-medium">
+                                <p className="text-neutral-700 font-medium text-sm">
                                     {selectedLesson.suggested_hymns || 'Não informado'}
                                 </p>
                             </div>
