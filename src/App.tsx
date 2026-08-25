@@ -64,7 +64,7 @@ export default function App() {
       case 'perfil': return <ChurchProfile user={user} />;
       case 'igreja': return <ChurchList role={user.role} churchId={user.church_id} />;
       case 'gerador_ia': return <MagazineAIGenerator onNavigateToLessons={() => setActiveMenu('licoes')} />;
-      case 'revistas': return <MagazineList role={user.role} />;
+      case 'revistas': return <MagazineList role={user.role} onNavigateToAI={() => setActiveMenu('gerador_ia')} onNavigateToLessons={() => setActiveMenu('licoes')} />;
       case 'licoes': return <LessonList role={user.role} />;
       case 'professores': return <TeacherList role={user.role} />;
       case 'alunos': return <StudentList role={user.role} />;

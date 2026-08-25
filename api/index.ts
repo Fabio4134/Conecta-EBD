@@ -289,8 +289,6 @@ app.put("/api/magazines/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/magazines/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
-
   const { data: lessons } = await supabase.from('lessons').select('id').eq('magazine_id', req.params.id);
   const lessonIds = lessons?.map((l: any) => l.id) || [];
   if (lessonIds.length > 0) {
