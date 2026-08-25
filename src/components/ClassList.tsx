@@ -3,7 +3,7 @@ import api from '../api.js';
 import { Class, Teacher, Student, Magazine } from '../types.js';
 import {
     Plus, Trash2, Search, Edit2, BookOpen, Power, PowerOff, Eye, ArrowLeft,
-    Users, Download, GraduationCap
+    Users, Download, GraduationCap, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -339,30 +339,69 @@ export default function ClassList({ role }: { role: string }) {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2 }} className="glass-panel rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-white/60">
-                        <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Classe' : 'Nova Classe'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Nome da Classe</label>
-                                <input required type="text" className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-neutral-100"
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-xl font-bold text-neutral-900">
+                                {editingId ? 'Editar Classe' : 'Nova Classe'}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => setShowModal(false)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
+                                    Nome da Classe *
+                                </label>
+                                <input
+                                    required
+                                    type="text"
+                                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-sm font-medium text-neutral-800"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    placeholder="Ex: Jovens - Herdeiros de Deus"
+                                />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest pl-1">Vincular Revista (Opcional)</label>
+                            <div>
+                                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
+                                    Vincular Revista (Opcional)
+                                </label>
                                 <select
-                                    className="w-full px-4 py-3 bg-white/50 border border-neutral-200/80 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm text-neutral-700"
+                                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-sm text-neutral-700"
                                     value={formData.magazine_id || ''}
                                     onChange={(e) => setFormData({ ...formData, magazine_id: e.target.value ? Number(e.target.value) : '' })}
                                 >
                                     <option value="">Nenhuma revista (Todas as lições visíveis)</option>
                                     {magazines.map(m => (
-                                        <option key={m.id} value={m.id}>{m.title} ({m.quarter}º Tri/{m.year})</option>
+                                        <option key={m.id} value={m.id}>{m.title} ({m.quarter} • {m.year})</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200/80 text-neutral-600 rounded-xl hover:bg-neutral-100 transition-all font-bold text-sm bg-white/50">Cancelar</button>
-                                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5 mt-0">Salvar</button>
+                            <div className="flex gap-3 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 px-4 py-3 border border-neutral-200 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-colors font-semibold text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                                >
+                                    {editingId ? 'Salvar Alterações' : 'Criar Classe'}
+                                </button>
                             </div>
                         </form>
                     </motion.div>
