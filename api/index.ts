@@ -911,7 +911,10 @@ app.put("/api/suggestions/:id", authenticate, async (req: any, res) => {
 
 // Teacher Schedule
 app.get("/api/schedule", authenticate, async (req: any, res) => {
-  let query = supabase.from('teacher_schedule').select('*, teachers(name), classes(name), lessons(title), churches(name)');
+  let query = supabase
+    .from('teacher_schedule')
+    .select('*, teachers(name), classes(name), lessons(title), churches(name)')
+    .order('date', { ascending: true });
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);

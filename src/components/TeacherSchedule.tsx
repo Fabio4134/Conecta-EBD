@@ -34,7 +34,10 @@ export default function TeacherSchedule({ role }: { role: string }) {
       api.get('/classes'),
       api.get('/lessons')
     ]);
-    setSchedule(sRes.data);
+    const sortedSchedule = (sRes.data || []).sort((a: ScheduleRecord, b: ScheduleRecord) =>
+      (a.date || '').localeCompare(b.date || '')
+    );
+    setSchedule(sortedSchedule);
     const sortedT = (tRes.data || []).sort((a: Teacher, b: Teacher) =>
       a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
     );
@@ -82,11 +85,30 @@ export default function TeacherSchedule({ role }: { role: string }) {
     }
   };
 
-  const filteredSchedule = schedule.filter(s => {
-    const matchesClass = filterClass ? s.class_id === parseInt(filterClass) : true;
-    const matchesDate = filterDate ? s.date === filterDate : true;
-    return matchesClass && matchesDate;
-  });
+  const filteredSchedule = React.useMemo(() => {
+    return schedule
+      .filter(s => {
+        const matchesClass = filterClass ? s.class_id === parseInt(filterClass) : true;
+        const matchesDate = filterDate ? s.date === filterDate : true;
+        return matchesClass && matchesDate;
+      })
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }, [schedule, filterClass, filterDate]);
+
+  const scheduleByClass = React.useMemo(() => {
+    const grouped = filteredSchedule.reduce((acc, curr) => {
+      const className = curr.class_name || 'Sem Classe';
+      if (!acc[className]) acc[className] = [];
+      acc[className].push(curr);
+      return acc;
+    }, {} as Record<string, ScheduleRecord[]>);
+
+    Object.keys(grouped).forEach(className => {
+      grouped[className].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    });
+
+    return grouped;
+  }, [filteredSchedule]);
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as any;
@@ -142,13 +164,6 @@ export default function TeacherSchedule({ role }: { role: string }) {
 
     doc.save('escala-professores-ebd.pdf');
   };
-
-  const scheduleByClass = filteredSchedule.reduce((acc, curr) => {
-    const className = curr.class_name || 'Sem Classe';
-    if (!acc[className]) acc[className] = [];
-    acc[className].push(curr);
-    return acc;
-  }, {} as Record<string, ScheduleRecord[]>);
 
   return (
     <div className="space-y-6">
