@@ -35,7 +35,10 @@ export default function TeacherSchedule({ role }: { role: string }) {
       api.get('/lessons')
     ]);
     setSchedule(sRes.data);
-    setTeachers(tRes.data);
+    const sortedT = (tRes.data || []).sort((a: Teacher, b: Teacher) =>
+      a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+    );
+    setTeachers(sortedT);
     setClasses(cRes.data);
     setLessons(lRes.data);
   };
@@ -260,7 +263,9 @@ export default function TeacherSchedule({ role }: { role: string }) {
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Professor</label>
                 <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.teacher_id} onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}>
                   <option value="">Selecione</option>
-                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {[...teachers].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
