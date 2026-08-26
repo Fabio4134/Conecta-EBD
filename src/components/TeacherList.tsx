@@ -12,6 +12,7 @@ export default function TeacherList({ role }: { role: string }) {
   const [classes, setClasses] = useState<Class[]>([]);
   const [search, setSearch] = useState('');
   const [filterChurch, setFilterChurch] = useState('');
+  const [filterClass, setFilterClass] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', class_id: '' });
@@ -36,7 +37,7 @@ export default function TeacherList({ role }: { role: string }) {
     e.preventDefault();
     try {
       if (editingId) {
-        await api.put(`/ teachers / ${editingId} `, formData);
+        await api.put(`/teachers/${editingId}`, formData);
       } else {
         await api.post('/teachers', formData);
       }
@@ -58,7 +59,7 @@ export default function TeacherList({ role }: { role: string }) {
   const handleDelete = async (id: number) => {
     if (confirm('Deseja realmente excluir este professor?')) {
       try {
-        await api.delete(`/ teachers / ${id} `);
+        await api.delete(`/teachers/${id}`);
         fetchData();
       } catch (err: any) {
         alert(err.response?.data?.error || 'Erro ao excluir professor. Verifique se existem escalas vinculadas.');
@@ -68,7 +69,7 @@ export default function TeacherList({ role }: { role: string }) {
 
   const handleToggleStatus = async (id: number) => {
     try {
-      await api.patch(`/ teachers / ${id}/toggle`);
+      await api.patch(`/teachers/${id}/toggle`);
       fetchData();
     } catch (err) {
       alert('Erro ao alterar status do professor');
@@ -80,8 +81,13 @@ export default function TeacherList({ role }: { role: string }) {
       t.class_name?.toLowerCase().includes(search.toLowerCase()) ||
       t.church_name?.toLowerCase().includes(search.toLowerCase());
     const matchesChurch = filterChurch ? t.church_name === filterChurch : true;
-    return matchesSearch && matchesChurch;
+    const matchesClass = filterClass ? (t.class_id?.toString() === filterClass || t.class_name === filterClass) : true;
+    return matchesSearch && matchesChurch && matchesClass;
   });
+
+  const availableClasses = filterChurch
+    ? classes.filter(c => c.church_name === filterChurch)
+    : classes;
 
   return (
     <div className="space-y-6">
@@ -112,11 +118,27 @@ export default function TeacherList({ role }: { role: string }) {
             />
           </div>
 
+          <select
+            className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+            value={filterClass}
+            onChange={(e) => setFilterClass(e.target.value)}
+          >
+            <option value="">Todas as Classes</option>
+            {availableClasses.map(c => (
+              <option key={c.id} value={c.id.toString()}>
+                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+              </option>
+            ))}
+          </select>
+
           {role === 'master' && uniqueChurches.length > 0 && (
             <select
               className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterChurch}
-              onChange={(e) => setFilterChurch(e.target.value)}
+              onChange={(e) => {
+                setFilterChurch(e.target.value);
+                setFilterClass('');
+              }}
             >
               <option value="">Todas as Igrejas</option>
               {uniqueChurches.map(church => (
