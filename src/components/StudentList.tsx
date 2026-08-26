@@ -108,7 +108,7 @@ export default function StudentList({ role }: { role: string }) {
             setEditingId(null);
             setFormData({ name: '', birth_date: '', class_id: '' });
           }}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
+          className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
         >
           <UserPlus size={18} />
           Novo Aluno

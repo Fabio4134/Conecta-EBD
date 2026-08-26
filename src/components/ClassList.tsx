@@ -159,32 +159,36 @@ export default function ClassList({ role }: { role: string }) {
     if (selectedClass) {
         return (
             <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setSelectedClass(null)} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors">
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div className="flex-1">
-                        <h1 className="text-2xl font-bold text-neutral-900">Classe: {selectedClass.name}</h1>
-                        <p className="text-neutral-500 text-sm italic">Professores e alunos desta turma.</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setSelectedClass(null)} className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-500 transition-colors" aria-label="Voltar">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 truncate">Classe: {selectedClass.name}</h1>
+                            <p className="text-neutral-500 text-xs sm:text-sm italic truncate">Professores e alunos desta turma.</p>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            setShareModalClass(selectedClass);
-                            setCopied(false);
-                        }}
-                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-sm"
-                        title="Compartilhar link de autocadastro da classe"
-                    >
-                        <Share2 size={16} />
-                        Link da Classe
-                    </button>
-                    <button onClick={downloadClassPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all shadow-lg shadow-emerald-100">
-                        <Download size={16} />
-                        Baixar Lista (PDF)
-                    </button>
-                    <span className={`text-[10px] px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest ${selectedClass.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                        {selectedClass.active ? 'Ativa' : 'Inativa'}
-                    </span>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        <button
+                            onClick={() => {
+                                setShareModalClass(selectedClass);
+                                setCopied(false);
+                            }}
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-all shadow-sm"
+                            title="Compartilhar link de autocadastro da classe"
+                        >
+                            <Share2 size={16} />
+                            Link da Classe
+                        </button>
+                        <button onClick={downloadClassPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-emerald-100">
+                            <Download size={16} />
+                            Baixar Lista (PDF)
+                        </button>
+                        <span className={`text-[10px] px-2.5 py-1.5 rounded-lg font-bold uppercase tracking-widest ${selectedClass.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                            {selectedClass.active ? 'Ativa' : 'Inativa'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Summary cards */}
@@ -279,7 +283,7 @@ export default function ClassList({ role }: { role: string }) {
                 </div>
                 <button
                     onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', magazine_id: '' }); }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
                 >
                     <Plus size={18} />
                     Nova Classe

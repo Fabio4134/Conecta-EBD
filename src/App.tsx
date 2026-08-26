@@ -107,24 +107,28 @@ export default function App() {
         setIsOpen={setIsSidebarOpen}
       />
 
-      <main className="flex-1 md:ml-64 min-h-screen relative">
+      <main className="flex-1 md:ml-64 min-h-screen relative w-full overflow-x-hidden">
         {/* Subtle background decorative shapes */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
 
-        <div className="md:hidden glass-panel text-neutral-900 p-4 flex items-center justify-between sticky top-0 z-30 mb-4 border-b border-neutral-200">
+        <div className="md:hidden glass-panel text-neutral-900 px-4 py-3.5 flex items-center justify-between sticky top-0 z-30 mb-3 border-b border-neutral-200/80 bg-white/90 backdrop-blur-xl">
           <div className="flex items-center gap-3 relative z-10">
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-md shadow-emerald-500/20 rounded-lg flex items-center justify-center text-white ring-1 ring-white/50">
               <GraduationCap size={18} />
             </div>
             <h1 className="font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600">Conecta EBD</h1>
           </div>
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-neutral-500 hover:text-neutral-900 transition-colors relative z-10">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -mr-1 text-neutral-600 hover:text-neutral-900 active:scale-95 transition-all relative z-10"
+            aria-label="Abrir menu"
+          >
             <Menu size={24} />
           </button>
         </div>
 
-        <div className="p-4 md:p-10 max-w-7xl mx-auto relative z-10">
+        <div className="px-3.5 py-3 sm:px-6 md:p-10 max-w-7xl mx-auto relative z-10 w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMenu}

@@ -8,12 +8,22 @@
 }
 
 @layer base {
-  body {
+  html, body {
     @apply font-sans bg-neutral-50 text-neutral-900 antialiased selection:bg-emerald-500/30;
+    overflow-x: hidden;
+    width: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior-y: contain;
   }
   
   .serif {
     @apply font-serif;
+  }
+
+  /* Smooth momentum scrolling for mobile overflow containers */
+  .overflow-x-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
   }
 }
 
