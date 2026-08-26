@@ -14,8 +14,8 @@ interface AIPromptGeneratorProps {
 export default function MagazineAIGenerator({ onNavigateToLessons }: AIPromptGeneratorProps) {
   const [quarter, setQuarter] = useState('3º Trimestre');
   const [year, setYear] = useState('2026');
-  const [category, setCategory] = useState('Adultos (Professor)');
-  const [themeHint, setThemeHint] = useState('A Igreja dos Gentios - Wagner Gaby');
+  const [category, setCategory] = useState('Adultos (Professor) - CPAD');
+  const [themeHint, setThemeHint] = useState('');
   const [copied, setCopied] = useState(false);
 
   const [aiResponse, setAiResponse] = useState('');
@@ -25,32 +25,48 @@ export default function MagazineAIGenerator({ onNavigateToLessons }: AIPromptGen
   const [successMessage, setSuccessMessage] = useState('');
   const [showPromptDetails, setShowPromptDetails] = useState(false);
 
-  // Gera o Prompt automaticamente
+  // Gera o Prompt automaticamente com isolamento estrito por faixa etária
   const generatedPrompt = useMemo(() => {
+    const categoryInstruction = category.includes('Jovens')
+      ? 'Revista Jovens CPAD (Lições Bíblicas Jovens)'
+      : category.includes('Juvenis')
+      ? 'Revista Juvenis CPAD (Lições Bíblicas Juvenis)'
+      : category.includes('Adolescentes')
+      ? 'Revista Adolescentes CPAD (Lições Bíblicas Adolescentes)'
+      : category.includes('Infantil') || category.includes('Primários')
+      ? 'Revista Infantil / Primários / Juniores CPAD'
+      : 'Revista Adultos CPAD (Lições Bíblicas Adultos)';
+
     return `Atue como um especialista em Educação Cristã e Lições Bíblicas da Escola Bíblica Dominical (EBD) da CPAD (Casa Publicadora das Assembleias de Deus).
 
 Pesquise na internet e traga as informações completas oficiais da revista de EBD com os seguintes dados:
 - TRIMESTRE: ${quarter}
 - ANO: ${year}
-- PÚBLICO / FAIXA ETÁRIA: ${category}
-${themeHint ? `- TEMA / COMENTARISTA (REFERÊNCIA): ${themeHint}` : ''}
+- CLASSE / FAIXA ETÁRIA: ${category}
+- PUBLICAÇÃO ALVO DA CPAD: ${categoryInstruction}
+${themeHint.trim() ? `- TEMA / COMENTARISTA (REFERÊNCIA INFORMADA): ${themeHint.trim()}` : `- TEMA: Localize o tema oficial específico da revista da CPAD para ${category} neste ${quarter} de ${year}`}
 
-Por favor, localize o Sumário oficial com as 13 Lições do trimestre e extraia com exatidão:
-1. O Tema Geral completo da Revista
+⚠️ ATENÇÃO E DIRETRIZ OBRIGATÓRIA:
+- Traga as 13 lições EXCLUSIVAMENTE da revista oficial da CPAD voltada para a classe "${category}".
+- NÃO traga o tema ou as lições de Adultos se a categoria selecionada for "${category}".
+- Cada faixa etária da CPAD possui seu próprio tema trimestral, texto áureo e sumário de 13 lições bíblicas.
+
+Por favor, localize o Sumário oficial com as 13 Lições do trimestre para "${category}" e extraia com exatidão:
+1. O Tema Geral completo da Revista para ${category}
 2. Para cada uma das 13 Lições:
    - Número da Lição (1 a 13)
    - Título da Lição
    - Data do Domingo correspondente (formato AAAA-MM-DD)
    - Texto Áureo (com o versículo na íntegra e a referência bíblica)
    - Verdade Prática (na íntegra)
-   - Hinos sugeridos da Harpa Cristã
+   - Hinos sugeridos da Harpa Cristã ou Cânticos
 
 IMPORTANTE: Responda ESTRITAMENTE em formato JSON puro (válido), sem textos adicionais antes ou depois, seguindo exatamente esta estrutura:
 
 \`\`\`json
 {
   "magazine": {
-    "title": "Título Geral da Revista",
+    "title": "Título Oficial da Revista para ${category}",
     "quarter": "${quarter}",
     "year": ${year}
   },
@@ -61,7 +77,7 @@ IMPORTANTE: Responda ESTRITAMENTE em formato JSON puro (válido), sem textos adi
       "date": "${year}-07-05",
       "golden_text": "Texto Áureo completo com citação bíblica entre parênteses",
       "practical_truth": "Verdade Prática completa da lição",
-      "suggested_hymns": "Hinos da Harpa: Ex: 120, 224"
+      "suggested_hymns": "Hinos ou Cânticos sugeridos"
     }
   ]
 }
@@ -309,7 +325,10 @@ IMPORTANTE: Responda ESTRITAMENTE em formato JSON puro (válido), sem textos adi
               <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Faixa Etária / Revista</label>
               <select
                 value={category}
-                onChange={e => setCategory(e.target.value)}
+                onChange={e => {
+                  setCategory(e.target.value);
+                  setThemeHint('');
+                }}
                 className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none"
               >
                 <option value="Adultos (Professor) - CPAD">Adultos (Professor) - CPAD</option>
@@ -318,21 +337,44 @@ IMPORTANTE: Responda ESTRITAMENTE em formato JSON puro (válido), sem textos adi
                 <option value="Juvenis - CPAD">Juvenis - CPAD</option>
                 <option value="Adolescentes - CPAD">Adolescentes - CPAD</option>
                 <option value="Infantil / Primários">Infantil / Primários</option>
+                <option value="Infantil / Juniores">Infantil / Juniores</option>
+                <option value="Maternal / Jardim">Maternal / Jardim de Infância</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
-                Tema / Comentarista (Opcional)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                  Tema / Comentarista (Opcional)
+                </label>
+                {themeHint && (
+                  <button
+                    type="button"
+                    onClick={() => setThemeHint('')}
+                    className="text-[11px] text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    Limpar Tema
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 value={themeHint}
                 onChange={e => setThemeHint(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none"
-                placeholder="Ex: A Igreja dos Gentios - Wagner Gaby"
+                className="w-full px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none placeholder:text-neutral-400"
+                placeholder={
+                  category.includes('Jovens')
+                    ? "Deixe vazio para a IA buscar ou digite o tema de Jovens"
+                    : category.includes('Juvenis')
+                    ? "Deixe vazio para a IA buscar ou digite o tema de Juvenis"
+                    : category.includes('Adolescentes')
+                    ? "Deixe vazio para a IA buscar ou digite o tema de Adolescentes"
+                    : "Deixe vazio para a IA buscar ou digite o tema da revista"
+                }
               />
-              <p className="text-[11px] text-neutral-400 mt-1">Ajuda a IA a encontrar a revista com mais precisão.</p>
+              <p className="text-[11px] text-neutral-400 mt-1">
+                Deixe em branco para a IA pesquisar automaticamente o tema oficial da CPAD para <strong>{category}</strong>.
+              </p>
             </div>
           </div>
 
