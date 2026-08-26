@@ -25,6 +25,7 @@ import Suggestions from './components/Suggestions';
 import SectorList from './components/SectorList';
 import ChurchProfile from './components/ChurchProfile';
 import MagazineAIGenerator from './components/MagazineAIGenerator';
+import StudentSelfRegister from './components/StudentSelfRegister';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -33,6 +34,12 @@ export default function App() {
   const [activeMenu, setActiveMenu] = useState('inicio');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Check if opening via public class registration link (e.g. ?cadastro=5 or ?classe=5)
+  const [cadastroClassId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('cadastro') || params.get('classe') || null;
+  });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -52,6 +59,10 @@ export default function App() {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
+
+  if (cadastroClassId) {
+    return <StudentSelfRegister classId={cadastroClassId} />;
+  }
 
   if (loading) return <div className="min-h-screen bg-neutral-100 flex items-center justify-center font-mono text-xs uppercase tracking-widest text-neutral-400 animate-pulse">Carregando Sistema...</div>;
 

@@ -9,9 +9,13 @@ export default function StudentList({ role }: { role: string }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [search, setSearch] = useState('');
+  const [filterClass, setFilterClass] = useState('');
+  const [filterChurch, setFilterChurch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', birth_date: '', class_id: '' });
+
+  const uniqueChurches = Array.from(new Set(students.map(s => s.church_name).filter(Boolean))) as string[];
 
   useEffect(() => {
     fetchData();
@@ -30,7 +34,7 @@ export default function StudentList({ role }: { role: string }) {
     setEditingId(student.id);
     setFormData({
       name: student.name,
-      birth_date: student.birth_date,
+      birth_date: student.birth_date || '',
       class_id: student.class_id.toString()
     });
     setShowModal(true);
@@ -39,10 +43,15 @@ export default function StudentList({ role }: { role: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: formData.name.trim(),
+        birth_date: formData.birth_date ? formData.birth_date : null,
+        class_id: formData.class_id
+      };
       if (editingId) {
-        await api.put(`/students/${editingId}`, formData);
+        await api.put(`/students/${editingId}`, payload);
       } else {
-        await api.post('/students', formData);
+        await api.post('/students', payload);
       }
       setShowModal(false);
       setEditingId(null);
@@ -73,10 +82,18 @@ export default function StudentList({ role }: { role: string }) {
     }
   };
 
-  const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.church_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const availableClasses = filterChurch
+    ? classes.filter(c => c.church_name === filterChurch)
+    : classes;
+
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.church_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.class_name?.toLowerCase().includes(search.toLowerCase());
+    const matchesChurch = filterChurch ? s.church_name === filterChurch : true;
+    const matchesClass = filterClass ? (s.class_id?.toString() === filterClass || s.class_name === filterClass) : true;
+    return matchesSearch && matchesChurch && matchesClass;
+  });
 
   return (
     <div className="space-y-6">
@@ -86,7 +103,11 @@ export default function StudentList({ role }: { role: string }) {
           <p className="text-neutral-500 text-sm italic serif">Cadastre e gerencie os alunos da sua igreja.</p>
         </div>
         <button
-          onClick={() => { setShowModal(true); setEditingId(null); }}
+          onClick={() => {
+            setShowModal(true);
+            setEditingId(null);
+            setFormData({ name: '', birth_date: '', class_id: '' });
+          }}
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
         >
           <UserPlus size={18} />
@@ -94,18 +115,47 @@ export default function StudentList({ role }: { role: string }) {
         </button>
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-neutral-100 flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 w-full bg-neutral-50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all">
+      <div className="glass-panel rounded-3xl overflow-hidden">
+        <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm">
             <Search size={18} className="text-neutral-400" />
             <input
               type="text"
-              placeholder="Buscar por nome ou igreja..."
+              placeholder="Buscar por nome, classe ou igreja..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          <select
+            className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+            value={filterClass}
+            onChange={(e) => setFilterClass(e.target.value)}
+          >
+            <option value="">Todas as Classes</option>
+            {availableClasses.map(c => (
+              <option key={c.id} value={c.id.toString()}>
+                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+              </option>
+            ))}
+          </select>
+
+          {role === 'master' && uniqueChurches.length > 0 && (
+            <select
+              className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+              value={filterChurch}
+              onChange={(e) => {
+                setFilterChurch(e.target.value);
+                setFilterClass('');
+              }}
+            >
+              <option value="">Todas as Igrejas</option>
+              {uniqueChurches.map(church => (
+                <option key={church} value={church}>{church}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -190,7 +240,9 @@ export default function StudentList({ role }: { role: string }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Data de Nascimento</label>
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
+                  Data de Nascimento <span className="text-neutral-400 font-normal lowercase">(opcional)</span>
+                </label>
                 <input
                   type="date"
                   className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all text-sm text-neutral-800"

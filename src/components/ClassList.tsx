@@ -3,7 +3,7 @@ import api from '../api.js';
 import { Class, Teacher, Student, Magazine } from '../types.js';
 import {
     Plus, Trash2, Search, Edit2, BookOpen, Power, PowerOff, Eye, ArrowLeft,
-    Users, Download, GraduationCap, X
+    Users, Download, GraduationCap, X, Share2, Copy, Check, ExternalLink, MessageCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -16,6 +16,10 @@ export default function ClassList({ role }: { role: string }) {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState<{ name: string; magazine_id: number | string }>({ name: '', magazine_id: '' });
     const [magazines, setMagazines] = useState<Magazine[]>([]);
+
+    // Share link modal
+    const [shareModalClass, setShareModalClass] = useState<Class | null>(null);
+    const [copied, setCopied] = useState(false);
 
     // Detail view
     const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -163,6 +167,17 @@ export default function ClassList({ role }: { role: string }) {
                         <h1 className="text-2xl font-bold text-neutral-900">Classe: {selectedClass.name}</h1>
                         <p className="text-neutral-500 text-sm italic">Professores e alunos desta turma.</p>
                     </div>
+                    <button
+                        onClick={() => {
+                            setShareModalClass(selectedClass);
+                            setCopied(false);
+                        }}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-sm"
+                        title="Compartilhar link de autocadastro da classe"
+                    >
+                        <Share2 size={16} />
+                        Link da Classe
+                    </button>
                     <button onClick={downloadClassPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all shadow-lg shadow-emerald-100">
                         <Download size={16} />
                         Baixar Lista (PDF)
@@ -314,6 +329,16 @@ export default function ClassList({ role }: { role: string }) {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setShareModalClass(cls);
+                                                    setCopied(false);
+                                                }}
+                                                className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                title="Link de Autocadastro para Alunos"
+                                            >
+                                                <Share2 size={16} />
+                                            </button>
                                             <button onClick={() => handleViewClass(cls)} className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Visualizar">
                                                 <Eye size={16} />
                                             </button>
@@ -404,6 +429,98 @@ export default function ClassList({ role }: { role: string }) {
                                 </button>
                             </div>
                         </form>
+                    </motion.div>
+                </div>
+            )}
+
+            {shareModalClass && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-white rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-neutral-100 space-y-5"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                                    <Share2 size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-neutral-900">Link de Autocadastro</h2>
+                                    <p className="text-xs text-neutral-500 font-medium">Classe: {shareModalClass.name}</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShareModalClass(null)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-neutral-600 leading-relaxed">
+                            Envie este link para os alunos pelo WhatsApp ou redes sociais. Eles poderão preencher o próprio cadastro diretamente pelo celular ou computador, sem necessidade de login.
+                        </p>
+
+                        <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 flex items-center gap-2">
+                            <input
+                                type="text"
+                                readOnly
+                                className="bg-transparent border-none text-xs font-mono text-neutral-700 flex-1 outline-none select-all"
+                                value={`${window.location.origin}/?cadastro=${shareModalClass.id}`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/?cadastro=${shareModalClass.id}`);
+                                    setCopied(true);
+                                    setTimeout(() => setCopied(false), 2500);
+                                }}
+                                className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                                    copied
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-neutral-900 hover:bg-neutral-800 text-white shadow-sm'
+                                }`}
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check size={14} />
+                                        Copiado!
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy size={14} />
+                                        Copiar Link
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                            <a
+                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                    `Olá! Faça sua matrícula na classe *${shareModalClass.name}* da Escola Bíblica Dominical (EBD) através do link:\n\n${window.location.origin}/?cadastro=${shareModalClass.id}`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                            >
+                                <MessageCircle size={18} />
+                                Compartilhar no WhatsApp
+                            </a>
+                            <a
+                                href={`/?cadastro=${shareModalClass.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-3 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5"
+                            >
+                                <ExternalLink size={16} />
+                                Abrir Link
+                            </a>
+                        </div>
                     </motion.div>
                 </div>
             )}

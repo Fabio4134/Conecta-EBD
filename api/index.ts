@@ -426,6 +426,74 @@ app.delete("/api/lessons/:id", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
+// Public class self-registration endpoints
+app.get("/api/public/classes/:id", async (req, res) => {
+  try {
+    const { data: cls, error } = await supabase
+      .from('classes')
+      .select('id, name, active, church_id, churches(name)')
+      .eq('id', req.params.id)
+      .single();
+
+    if (error || !cls) {
+      return res.status(404).json({ error: "Classe não encontrada." });
+    }
+
+    res.json({
+      id: cls.id,
+      name: cls.name,
+      active: cls.active,
+      church_id: cls.church_id,
+      church_name: (cls as any).churches?.name
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Erro ao buscar classe." });
+  }
+});
+
+app.post("/api/public/classes/:id/register", async (req, res) => {
+  try {
+    const { name, birth_date } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "O nome completo é obrigatório." });
+    }
+
+    const { data: cls, error: clsErr } = await supabase
+      .from('classes')
+      .select('id, name, church_id, active')
+      .eq('id', req.params.id)
+      .single();
+
+    if (clsErr || !cls) {
+      return res.status(404).json({ error: "Classe não encontrada." });
+    }
+
+    const { data: student, error: insErr } = await supabase
+      .from('students')
+      .insert({
+        name: name.trim(),
+        birth_date: birth_date ? birth_date : null,
+        church_id: cls.church_id,
+        class_id: cls.id,
+        active: true
+      })
+      .select()
+      .single();
+
+    if (insErr) {
+      return res.status(500).json({ error: insErr.message || "Erro ao realizar cadastro." });
+    }
+
+    res.json({
+      success: true,
+      message: `Aluno cadastrado com sucesso na classe ${cls.name}!`,
+      student
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Erro ao processar matrícula." });
+  }
+});
+
 // Students
 app.get("/api/students", authenticate, async (req: any, res) => {
   let query = supabase.from('students').select('*, churches(name), classes(name)');
@@ -449,14 +517,23 @@ app.get("/api/students", authenticate, async (req: any, res) => {
 app.post("/api/students", authenticate, async (req: any, res) => {
   const { name, birth_date, class_id } = req.body;
   const church_id = req.user.church_id;
-  const { error } = await supabase.from('students').insert({ name, birth_date, church_id, class_id });
+  const { error } = await supabase.from('students').insert({
+    name: name?.trim(),
+    birth_date: birth_date ? birth_date : null,
+    church_id,
+    class_id
+  });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/students/:id", authenticate, async (req: any, res) => {
   const { name, birth_date, class_id } = req.body;
-  let query = supabase.from('students').update({ name, birth_date, class_id }).eq('id', req.params.id);
+  let query = supabase.from('students').update({
+    name: name?.trim(),
+    birth_date: birth_date ? birth_date : null,
+    class_id
+  }).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
