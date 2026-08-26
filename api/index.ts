@@ -510,7 +510,7 @@ app.post("/api/public/classes/:id/register", async (req, res) => {
 
 // Students
 app.get("/api/students", authenticate, async (req: any, res) => {
-  let query = supabase.from('students').select('*, churches(name), classes(name)');
+  let query = supabase.from('students').select('*, churches(id, name, sector_id, sectors(id, name)), classes(name)');
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -522,6 +522,8 @@ app.get("/api/students", authenticate, async (req: any, res) => {
   const formattedStudents = students.map((s: any) => ({
     ...s,
     church_name: s.churches?.name,
+    sector_id: s.churches?.sector_id,
+    sector_name: s.churches?.sectors?.name,
     class_name: s.classes?.name
   }));
 
@@ -603,7 +605,7 @@ app.delete("/api/students/:id", authenticate, async (req: any, res) => {
 
 // Teachers
 app.get("/api/teachers", authenticate, async (req: any, res) => {
-  let query = supabase.from('teachers').select('*, churches(name), classes(name)');
+  let query = supabase.from('teachers').select('*, churches(id, name, sector_id, sectors(id, name)), classes(name)');
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -615,6 +617,8 @@ app.get("/api/teachers", authenticate, async (req: any, res) => {
   const formattedTeachers = teachers.map((t: any) => ({
     ...t,
     church_name: t.churches?.name,
+    sector_id: t.churches?.sector_id,
+    sector_name: t.churches?.sectors?.name,
     class_name: t.classes?.name
   }));
 
@@ -656,7 +660,7 @@ app.delete("/api/teachers/:id", authenticate, async (req: any, res) => {
 
 // Classes
 app.get("/api/classes", authenticate, async (req: any, res) => {
-  let query = supabase.from('classes').select('*, churches(name), magazines(title)');
+  let query = supabase.from('classes').select('*, churches(id, name, sector_id, sectors(id, name)), magazines(title)');
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -668,6 +672,8 @@ app.get("/api/classes", authenticate, async (req: any, res) => {
   const formattedClasses = classes.map((c: any) => ({
     ...c,
     church_name: c.churches?.name,
+    sector_id: c.churches?.sector_id,
+    sector_name: c.churches?.sectors?.name,
     magazine_title: c.magazines?.title
   }));
 
@@ -750,7 +756,7 @@ app.get("/api/attendance/check", authenticate, async (req: any, res) => {
 });
 
 app.get("/api/attendance", authenticate, async (req: any, res) => {
-  let query = supabase.from('attendance').select('*, students(name), lessons(title), churches(name)');
+  let query = supabase.from('attendance').select('*, students(name, class_id), lessons(title), churches(id, name, sector_id, sectors(id, name))');
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -762,8 +768,11 @@ app.get("/api/attendance", authenticate, async (req: any, res) => {
   const formattedAttendance = attendance.map((a: any) => ({
     ...a,
     student_name: a.students?.name,
-    lesson_title: a.lessons?.title,
-    church_name: a.churches?.name
+    class_id: a.students?.class_id,
+    church_name: a.churches?.name,
+    sector_id: a.churches?.sector_id,
+    sector_name: a.churches?.sectors?.name,
+    lesson_title: a.lessons?.title
   }));
 
   res.json(formattedAttendance);
@@ -957,7 +966,7 @@ app.put("/api/suggestions/:id", authenticate, async (req: any, res) => {
 app.get("/api/schedule", authenticate, async (req: any, res) => {
   let query = supabase
     .from('teacher_schedule')
-    .select('*, teachers(name), classes(name), lessons(title), churches(name)')
+    .select('*, teachers(name), classes(name), lessons(title), churches(id, name, sector_id, sectors(id, name))')
     .order('date', { ascending: true });
 
   if (req.user.role !== 'master') {
@@ -972,7 +981,9 @@ app.get("/api/schedule", authenticate, async (req: any, res) => {
     teacher_name: s.teachers?.name,
     class_name: s.classes?.name,
     lesson_title: s.lessons?.title,
-    church_name: s.churches?.name
+    church_name: s.churches?.name,
+    sector_id: s.churches?.sector_id,
+    sector_name: s.churches?.sectors?.name
   }));
 
   res.json(formattedSchedule);

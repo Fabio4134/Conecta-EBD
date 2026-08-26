@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { ScheduleRecord, Teacher, Class, Lesson } from '../types';
+import { ScheduleRecord, Teacher, Class, Lesson, Sector, Church } from '../types';
 import {
   Calendar, Download, Search, Plus, Edit2, Trash2, X,
   ChevronDown, ChevronUp, Users, BookOpen, Clock, Layers
@@ -15,8 +15,12 @@ export default function TeacherSchedule({ role }: { role: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [churches, setChurches] = useState<Church[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [filterSector, setFilterSector] = useState('');
+  const [filterChurch, setFilterChurch] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
@@ -33,11 +37,13 @@ export default function TeacherSchedule({ role }: { role: string }) {
   }, []);
 
   const fetchData = async () => {
-    const [sRes, tRes, cRes, lRes] = await Promise.all([
+    const [sRes, tRes, cRes, lRes, secRes, chuRes] = await Promise.all([
       api.get('/schedule'),
       api.get('/teachers'),
       api.get('/classes'),
-      api.get('/lessons')
+      api.get('/lessons'),
+      role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
     const sortedSchedule = (sRes.data || []).sort((a: ScheduleRecord, b: ScheduleRecord) =>
       (a.date || '').localeCompare(b.date || '')
@@ -49,6 +55,8 @@ export default function TeacherSchedule({ role }: { role: string }) {
     setTeachers(sortedT);
     setClasses(cRes.data || []);
     setLessons(lRes.data || []);
+    setSectors(secRes.data || []);
+    setChurches(chuRes.data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,15 +98,31 @@ export default function TeacherSchedule({ role }: { role: string }) {
     }
   };
 
+  const availableChurches = filterSector
+    ? churches.filter(c => c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+    : churches;
+
+  const availableClasses = filterChurch
+    ? classes.filter(c => c.church_name === filterChurch || c.church_id?.toString() === filterChurch)
+    : filterSector
+    ? classes.filter(c => c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+    : classes;
+
   const filteredSchedule = React.useMemo(() => {
     return schedule
       .filter(s => {
+        const matchesSector = filterSector
+          ? (s.sector_id === parseInt(filterSector) || s.sector_name === filterSector)
+          : true;
+        const matchesChurch = filterChurch
+          ? (s.church_name === filterChurch || s.church_id?.toString() === filterChurch)
+          : true;
         const matchesClass = filterClass ? s.class_id === parseInt(filterClass) : true;
         const matchesDate = filterDate ? s.date === filterDate : true;
-        return matchesClass && matchesDate;
+        return matchesSector && matchesChurch && matchesClass && matchesDate;
       })
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  }, [schedule, filterClass, filterDate]);
+  }, [schedule, filterSector, filterChurch, filterClass, filterDate]);
 
   const scheduleByClass = React.useMemo(() => {
     const grouped = filteredSchedule.reduce((acc, curr) => {
@@ -153,17 +177,20 @@ export default function TeacherSchedule({ role }: { role: string }) {
     // Class legend block
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
-    doc.text(`Filtros ativos: ${filterClass ? classes.find(c => c.id.toString() === filterClass)?.name : 'Todas as classes'}  |  ${filterDate || 'Todas as datas'}`, 14, 29);
+    const sectorInfo = filterSector ? `Setor: ${sectors.find(s => s.id.toString() === filterSector)?.name || filterSector}` : 'Todos os Setores';
+    const churchInfo = filterChurch ? `Congregação: ${churches.find(c => c.id.toString() === filterChurch)?.name || filterChurch}` : 'Todas as Congregações';
+    const classInfo = filterClass ? `Classe: ${classes.find(c => c.id.toString() === filterClass)?.name}` : 'Todas as classes';
+    doc.text(`Filtros: ${sectorInfo} | ${churchInfo} | ${classInfo}  |  Data: ${filterDate || 'Todas as datas'}`, 14, 29);
 
     const tableData = filteredSchedule.map(s => [
       formatDate(s.date),
       s.teacher_name || '',
       s.class_name || '',
       s.lesson_title || '',
-      ...(role === 'master' ? [s.church_name || ''] : [])
+      ...(role === 'master' ? [s.church_name || '—', s.sector_name || '—'] : [])
     ]);
 
-    const head = [['Data', 'Professor', 'Classe', 'Lição', ...(role === 'master' ? ['Igreja'] : [])]];
+    const head = [['Data', 'Professor', 'Classe', 'Lição', ...(role === 'master' ? ['Congregação / Igreja', 'Setor'] : [])]];
 
     autoTable(doc, {
       startY: 33,
@@ -174,9 +201,9 @@ export default function TeacherSchedule({ role }: { role: string }) {
       headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', halign: 'center' },
       alternateRowStyles: { fillColor: [237, 233, 254] },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 28 },
-        1: { fontStyle: 'bold', cellWidth: 55 },
-        2: { cellWidth: 50 },
+        0: { halign: 'center', cellWidth: 26 },
+        1: { fontStyle: 'bold', cellWidth: 50 },
+        2: { cellWidth: 45 },
         3: { cellWidth: 'auto', fontStyle: 'italic' },
       },
       didParseCell: (data: any) => {
@@ -218,23 +245,64 @@ export default function TeacherSchedule({ role }: { role: string }) {
       </div>
 
       {/* Barra de Filtros */}
-      <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm flex flex-col sm:flex-row items-center gap-3">
-        <div className="w-full sm:flex-1">
-          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Filtrar por Classe</label>
+      <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm flex flex-col sm:flex-row items-center gap-3 flex-wrap">
+        {role === 'master' && sectors.length > 0 && (
+          <div className="w-full sm:w-48">
+            <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Setor</label>
+            <select
+              className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
+              value={filterSector}
+              onChange={(e) => {
+                setFilterSector(e.target.value);
+                setFilterChurch('');
+                setFilterClass('');
+              }}
+            >
+              <option value="">Todos os Setores</option>
+              {sectors.map(sec => (
+                <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {role === 'master' && availableChurches.length > 0 && (
+          <div className="w-full sm:w-56">
+            <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Congregação</label>
+            <select
+              className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
+              value={filterChurch}
+              onChange={(e) => {
+                setFilterChurch(e.target.value);
+                setFilterClass('');
+              }}
+            >
+              <option value="">Todas as Congregações</option>
+              {availableChurches.map(church => (
+                <option key={church.id} value={church.name}>{church.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="w-full sm:flex-1 min-w-[200px]">
+          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Classe</label>
           <select
             className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
           >
-            <option value="">Todas as Classes ({schedule.length} escalas no total)</option>
-            {classes.map(c => (
-              <option key={c.id} value={c.id.toString()}>{c.name}</option>
+            <option value="">Todas as Classes ({filteredSchedule.length} escalas)</option>
+            {availableClasses.map(c => (
+              <option key={c.id} value={c.id.toString()}>
+                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+              </option>
             ))}
           </select>
         </div>
 
-        <div className="w-full sm:w-60">
-          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Filtrar por Data</label>
+        <div className="w-full sm:w-44">
+          <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Data</label>
           <input
             type="date"
             className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
@@ -243,9 +311,9 @@ export default function TeacherSchedule({ role }: { role: string }) {
           />
         </div>
 
-        {(filterClass || filterDate) && (
+        {(filterSector || filterChurch || filterClass || filterDate) && (
           <button
-            onClick={() => { setFilterClass(''); setFilterDate(''); }}
+            onClick={() => { setFilterSector(''); setFilterChurch(''); setFilterClass(''); setFilterDate(''); }}
             className="sm:self-end px-3 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0"
           >
             Limpar Filtros

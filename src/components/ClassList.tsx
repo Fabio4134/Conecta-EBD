@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api.js';
-import { Class, Teacher, Student, Magazine } from '../types.js';
+import { Class, Teacher, Student, Magazine, Sector, Church } from '../types.js';
 import {
     Plus, Trash2, Search, Edit2, BookOpen, Power, PowerOff, Eye, ArrowLeft,
-    Users, Download, GraduationCap, X, Share2, Copy, Check, ExternalLink, MessageCircle
+    Users, Download, GraduationCap, X, Share2, Copy, Check, ExternalLink, MessageCircle,
+    Building2, MapPin
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -11,7 +12,11 @@ import autoTable from 'jspdf-autotable';
 
 export default function ClassList({ role }: { role: string }) {
     const [classes, setClasses] = useState<Class[]>([]);
+    const [sectors, setSectors] = useState<Sector[]>([]);
+    const [churches, setChurches] = useState<Church[]>([]);
     const [search, setSearch] = useState('');
+    const [filterSector, setFilterSector] = useState('');
+    const [filterChurch, setFilterChurch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState<{ name: string; magazine_id: number | string }>({ name: '', magazine_id: '' });
@@ -31,12 +36,16 @@ export default function ClassList({ role }: { role: string }) {
 
     const fetchData = async () => {
         try {
-            const [clsRes, magRes] = await Promise.all([
+            const [clsRes, magRes, secRes, chuRes] = await Promise.all([
                 api.get('/classes'),
-                api.get('/magazines')
+                api.get('/magazines'),
+                role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+                role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
-            setClasses(clsRes.data);
-            setMagazines(magRes.data);
+            setClasses(clsRes.data || []);
+            setMagazines(magRes.data || []);
+            setSectors(secRes.data || []);
+            setChurches(chuRes.data || []);
         } catch (error) {
             console.error('Error fetching class data:', error);
         }
@@ -150,10 +159,22 @@ export default function ClassList({ role }: { role: string }) {
         } catch { alert('Erro ao alterar status da classe'); }
     };
 
-    const filtered = classes.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.church_name?.toLowerCase().includes(search.toLowerCase())
-    );
+    const availableChurches = filterSector
+        ? churches.filter(c => c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+        : churches;
+
+    const filtered = classes.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+            c.church_name?.toLowerCase().includes(search.toLowerCase()) ||
+            c.sector_name?.toLowerCase().includes(search.toLowerCase());
+        const matchesSector = filterSector
+            ? (c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+            : true;
+        const matchesChurch = filterChurch
+            ? (c.church_id?.toString() === filterChurch || c.church_name === filterChurch)
+            : true;
+        return matchesSearch && matchesSector && matchesChurch;
+    });
 
     // ── DETAIL VIEW ──────────────────────────────────────────────────────────
     if (selectedClass) {
@@ -192,37 +213,42 @@ export default function ClassList({ role }: { role: string }) {
                 </div>
 
                 {/* Summary cards */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="glass-card rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-12 h-12 rounded-xl bg-emerald-100/50 text-emerald-600 flex items-center justify-center relative z-10"><GraduationCap size={22} /></div>
-                        <div className="relative z-10">
-                            <p className="text-2xl font-bold text-neutral-900">{classTeachers.filter(t => t.active).length}</p>
-                            <p className="text-xs text-neutral-500 uppercase tracking-widest">Professores ativos</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="glass-panel p-5 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                            <Users size={24} />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-neutral-900">{classTeachers.length}</p>
+                            <p className="text-xs text-neutral-500 font-medium">Professores Vinculados</p>
                         </div>
                     </div>
-                    <div className="glass-card rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-12 h-12 rounded-xl bg-blue-100/50 text-blue-600 flex items-center justify-center relative z-10"><Users size={22} /></div>
-                        <div className="relative z-10">
-                            <p className="text-2xl font-bold text-neutral-900">{classStudents.filter(s => s.active).length}</p>
-                            <p className="text-xs text-neutral-500 uppercase tracking-widest">Alunos ativos</p>
+                    <div className="glass-panel p-5 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                            <GraduationCap size={24} />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-neutral-900">{classStudents.length}</p>
+                            <p className="text-xs text-neutral-500 font-medium">Alunos Matriculados</p>
                         </div>
                     </div>
                 </div>
 
+                {/* Teachers and Students Lists */}
                 {loading ? (
-                    <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center text-neutral-400">Carregando...</div>
+                    <div className="p-12 text-center text-neutral-400">Carregando dados da turma...</div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Teachers */}
-                        <div className="glass-panel rounded-3xl overflow-hidden relative">
-                            <div className="px-6 py-4 border-b border-neutral-200/50 bg-emerald-500/5 flex items-center gap-3">
-                                <GraduationCap size={16} className="text-emerald-600" />
-                                <span className="text-sm font-bold text-emerald-700 uppercase tracking-wider">Professores ({classTeachers.length})</span>
+                        <div className="glass-panel rounded-3xl overflow-hidden">
+                            <div className="p-5 border-b border-neutral-200/50 flex items-center justify-between">
+                                <h2 className="font-bold text-neutral-800 flex items-center gap-2">
+                                    <Users size={18} className="text-emerald-600" />
+                                    Professores ({classTeachers.length})
+                                </h2>
                             </div>
                             {classTeachers.length === 0 ? (
-                                <div className="p-8 text-center text-neutral-400 text-sm">Nenhum professor vinculado.</div>
+                                <div className="p-8 text-center text-neutral-400 text-sm">Nenhum professor vinculado a esta classe.</div>
                             ) : (
                                 <div className="divide-y divide-neutral-200/50">
                                     {classTeachers.map((t, idx) => (
@@ -230,7 +256,9 @@ export default function ClassList({ role }: { role: string }) {
                                             <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm ${t.active ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-400'}`}>
                                                 {t.name.charAt(0)}
                                             </div>
-                                            <span className="flex-1 text-sm font-medium text-neutral-800">{t.name}</span>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium text-neutral-800">{t.name}</p>
+                                            </div>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold uppercase ${t.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
                                                 {t.active ? 'Ativo' : 'Inativo'}
                                             </span>
@@ -241,10 +269,12 @@ export default function ClassList({ role }: { role: string }) {
                         </div>
 
                         {/* Students */}
-                        <div className="glass-panel rounded-3xl overflow-hidden relative">
-                            <div className="px-6 py-4 border-b border-neutral-200/50 bg-blue-500/5 flex items-center gap-3">
-                                <Users size={16} className="text-blue-600" />
-                                <span className="text-sm font-bold text-blue-700 uppercase tracking-wider">Alunos ({classStudents.length})</span>
+                        <div className="glass-panel rounded-3xl overflow-hidden">
+                            <div className="p-5 border-b border-neutral-200/50 flex items-center justify-between">
+                                <h2 className="font-bold text-neutral-800 flex items-center gap-2">
+                                    <GraduationCap size={18} className="text-blue-600" />
+                                    Alunos ({classStudents.length})
+                                </h2>
                             </div>
                             {classStudents.length === 0 ? (
                                 <div className="p-8 text-center text-neutral-400 text-sm">Nenhum aluno vinculado a esta classe.</div>
@@ -274,7 +304,7 @@ export default function ClassList({ role }: { role: string }) {
     }
 
     const downloadAllClassesPDF = () => {
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as any;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as any;
         const pageW = doc.internal.pageSize.getWidth();
 
         // Header bar
@@ -287,7 +317,7 @@ export default function ClassList({ role }: { role: string }) {
         doc.text('Conecta EBD — Relação Geral de Classes', 14, 15);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}   |   Total: ${filtered.length} classes`, pageW - 14, 15, { align: 'right' });
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageW - 14, 15, { align: 'right' });
 
         // Summary Metrics block
         const activeCount = filtered.filter(c => c.active).length;
@@ -295,17 +325,19 @@ export default function ClassList({ role }: { role: string }) {
         doc.setTextColor(80, 80, 80);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Resumo: ${filtered.length} Classes Cadastradas (${activeCount} Ativas, ${inactiveCount} Inativas)`, 14, 30);
+        const sectorLabel = filterSector ? `Setor: ${sectors.find(s => s.id.toString() === filterSector)?.name || filterSector}` : 'Todos os Setores';
+        const churchLabel = filterChurch ? `Congregação: ${churches.find(c => c.id.toString() === filterChurch)?.name || filterChurch}` : 'Todas as Congregações';
+        doc.text(`Filtros: ${sectorLabel} | ${churchLabel}  —  Resumo: ${filtered.length} Classes (${activeCount} Ativas, ${inactiveCount} Inativas)`, 14, 30);
 
         const tableData = filtered.map((c, index) => [
             (index + 1).toString(),
             c.name,
             c.magazine_title || 'Nenhuma revista vinculada',
             c.active ? 'Ativa' : 'Inativa',
-            ...(role === 'master' ? [c.church_name || ''] : [])
+            ...(role === 'master' ? [c.church_name || '—', c.sector_name || '—'] : [])
         ]);
 
-        const head = [['#', 'Nome da Classe', 'Revista Vinculada', 'Status', ...(role === 'master' ? ['Igreja'] : [])]];
+        const head = [['#', 'Nome da Classe', 'Revista Vinculada', 'Status', ...(role === 'master' ? ['Congregação / Igreja', 'Setor'] : [])]];
 
         autoTable(doc, {
             startY: 34,
@@ -319,7 +351,7 @@ export default function ClassList({ role }: { role: string }) {
                 0: { halign: 'center', cellWidth: 12 },
                 1: { fontStyle: 'bold', cellWidth: 55 },
                 2: { cellWidth: 'auto' },
-                3: { halign: 'center', cellWidth: 24 }
+                3: { halign: 'center', cellWidth: 22 }
             }
         });
 
@@ -355,11 +387,40 @@ export default function ClassList({ role }: { role: string }) {
             </div>
 
             <div className="glass-panel rounded-3xl overflow-hidden">
-                <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3">
-                    <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm">
+                <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3 flex-wrap">
+                    <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm min-w-[220px]">
                         <Search size={18} className="text-neutral-400" />
-                        <input type="text" placeholder="Buscar por nome..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none" value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <input type="text" placeholder="Buscar por classe, congregação..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none" value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
+
+                    {role === 'master' && sectors.length > 0 && (
+                        <select
+                            className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+                            value={filterSector}
+                            onChange={(e) => {
+                                setFilterSector(e.target.value);
+                                setFilterChurch('');
+                            }}
+                        >
+                            <option value="">Todos os Setores</option>
+                            {sectors.map(sec => (
+                                <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {role === 'master' && availableChurches.length > 0 && (
+                        <select
+                            className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+                            value={filterChurch}
+                            onChange={(e) => setFilterChurch(e.target.value)}
+                        >
+                            <option value="">Todas as Congregações</option>
+                            {availableChurches.map(church => (
+                                <option key={church.id} value={church.id.toString()}>{church.name}</option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">

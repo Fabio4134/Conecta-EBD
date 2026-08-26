@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api.js';
-import { Teacher, Church, Class } from '../types.js';
+import { Teacher, Church, Class, Sector } from '../types.js';
 import {
   Plus, Trash2, Search, Edit2, Users, Power, PowerOff, Eye, ArrowLeft,
   Calendar, Download, GraduationCap, X
@@ -12,27 +12,31 @@ import autoTable from 'jspdf-autotable';
 export default function TeacherList({ role }: { role: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [churches, setChurches] = useState<Church[]>([]);
   const [search, setSearch] = useState('');
+  const [filterSector, setFilterSector] = useState('');
   const [filterChurch, setFilterChurch] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', class_id: '' });
 
-  // Get unique churches for the filter
-  const uniqueChurches = Array.from(new Set(teachers.map(t => t.church_name).filter(Boolean))) as string[];
-
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const [tRes, cRes] = await Promise.all([
+    const [tRes, cRes, sRes, chuRes] = await Promise.all([
       api.get('/teachers'),
-      api.get('/classes')
+      api.get('/classes'),
+      role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
-    setTeachers(tRes.data);
-    setClasses(cRes.data);
+    setTeachers(tRes.data || []);
+    setClasses(cRes.data || []);
+    setSectors(sRes.data || []);
+    setChurches(chuRes.data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,21 +82,35 @@ export default function TeacherList({ role }: { role: string }) {
     }
   };
 
+  const availableChurches = filterSector
+    ? churches.filter(c => c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+    : churches;
+
+  const availableClasses = filterChurch
+    ? classes.filter(c => c.church_name === filterChurch || c.church_id?.toString() === filterChurch)
+    : filterSector
+    ? classes.filter(c => c.sector_id === parseInt(filterSector) || c.sector_name === filterSector)
+    : classes;
+
   const filtered = teachers.filter(t => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.class_name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.church_name?.toLowerCase().includes(search.toLowerCase());
-    const matchesChurch = filterChurch ? t.church_name === filterChurch : true;
-    const matchesClass = filterClass ? (t.class_id?.toString() === filterClass || t.class_name === filterClass) : true;
-    return matchesSearch && matchesChurch && matchesClass;
+      t.church_name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.sector_name?.toLowerCase().includes(search.toLowerCase());
+    const matchesSector = filterSector
+      ? (t.sector_id === parseInt(filterSector) || t.sector_name === filterSector)
+      : true;
+    const matchesChurch = filterChurch
+      ? (t.church_name === filterChurch || t.church_id?.toString() === filterChurch)
+      : true;
+    const matchesClass = filterClass
+      ? (t.class_id?.toString() === filterClass || t.class_name === filterClass)
+      : true;
+    return matchesSearch && matchesSector && matchesChurch && matchesClass;
   });
 
-  const availableClasses = filterChurch
-    ? classes.filter(c => c.church_name === filterChurch)
-    : classes;
-
   const downloadTeachersPDF = () => {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as any;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as any;
     const pageW = doc.internal.pageSize.getWidth();
 
     // Header bar
@@ -105,7 +123,7 @@ export default function TeacherList({ role }: { role: string }) {
     doc.text('Conecta EBD — Corpo Docente (Professores)', 14, 15);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}   |   Total: ${filtered.length} professores`, pageW - 14, 15, { align: 'right' });
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageW - 14, 15, { align: 'right' });
 
     // Summary block
     const activeCount = filtered.filter(t => t.active).length;
@@ -113,17 +131,19 @@ export default function TeacherList({ role }: { role: string }) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     const filterInfo = filterClass ? `Classe: ${classes.find(c => c.id.toString() === filterClass)?.name}` : 'Todas as classes';
-    doc.text(`Filtros: ${filterInfo} ${filterChurch ? `| Igreja: ${filterChurch}` : ''}  —  Total: ${filtered.length} (${activeCount} Ativos)`, 14, 30);
+    const sectorInfo = filterSector ? `Setor: ${sectors.find(s => s.id.toString() === filterSector)?.name || filterSector}` : 'Todos os Setores';
+    const churchInfo = filterChurch ? `Congregação: ${churches.find(c => c.id.toString() === filterChurch)?.name || filterChurch}` : 'Todas as Congregações';
+    doc.text(`Filtros: ${sectorInfo} | ${churchInfo} | ${filterInfo}  —  Total: ${filtered.length} (${activeCount} Ativos)`, 14, 30);
 
     const tableData = filtered.map((t, index) => [
       (index + 1).toString(),
       t.name,
       t.class_name || 'Sem classe vinculada',
       t.active ? 'Ativo' : 'Inativo',
-      ...(role === 'master' ? [t.church_name || ''] : [])
+      ...(role === 'master' ? [t.church_name || '—', t.sector_name || '—'] : [])
     ]);
 
-    const head = [['#', 'Nome do Professor', 'Classe Vinculada', 'Status', ...(role === 'master' ? ['Igreja'] : [])]];
+    const head = [['#', 'Nome do Professor', 'Classe Vinculada', 'Status', ...(role === 'master' ? ['Congregação / Igreja', 'Setor'] : [])]];
 
     autoTable(doc, {
       startY: 34,
@@ -135,9 +155,9 @@ export default function TeacherList({ role }: { role: string }) {
       alternateRowStyles: { fillColor: [240, 253, 244] },
       columnStyles: {
         0: { halign: 'center', cellWidth: 12 },
-        1: { fontStyle: 'bold', cellWidth: 70 },
+        1: { fontStyle: 'bold', cellWidth: 65 },
         2: { cellWidth: 55 },
-        3: { halign: 'center', cellWidth: 25 }
+        3: { halign: 'center', cellWidth: 22 }
       }
     });
 
@@ -184,6 +204,39 @@ export default function TeacherList({ role }: { role: string }) {
             />
           </div>
 
+          {role === 'master' && sectors.length > 0 && (
+            <select
+              className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+              value={filterSector}
+              onChange={(e) => {
+                setFilterSector(e.target.value);
+                setFilterChurch('');
+                setFilterClass('');
+              }}
+            >
+              <option value="">Todos os Setores</option>
+              {sectors.map(sec => (
+                <option key={sec.id} value={sec.id.toString()}>{sec.name}</option>
+              ))}
+            </select>
+          )}
+
+          {role === 'master' && availableChurches.length > 0 && (
+            <select
+              className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
+              value={filterChurch}
+              onChange={(e) => {
+                setFilterChurch(e.target.value);
+                setFilterClass('');
+              }}
+            >
+              <option value="">Todas as Congregações</option>
+              {availableChurches.map(church => (
+                <option key={church.id} value={church.name}>{church.name}</option>
+              ))}
+            </select>
+          )}
+
           <select
             className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
             value={filterClass}
@@ -196,22 +249,6 @@ export default function TeacherList({ role }: { role: string }) {
               </option>
             ))}
           </select>
-
-          {role === 'master' && uniqueChurches.length > 0 && (
-            <select
-              className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
-              value={filterChurch}
-              onChange={(e) => {
-                setFilterChurch(e.target.value);
-                setFilterClass('');
-              }}
-            >
-              <option value="">Todas as Igrejas</option>
-              {uniqueChurches.map(church => (
-                <option key={church} value={church}>{church}</option>
-              ))}
-            </select>
-          )}
         </div>
 
         <div className="overflow-x-auto">

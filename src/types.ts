@@ -16,7 +16,6 @@ export interface Church {
   logo_url?: string;
 }
 
-
 export interface User {
   id: number;
   name: string;
@@ -32,6 +31,8 @@ export interface Class {
   name: string;
   church_id: number;
   church_name?: string;
+  sector_id?: number;
+  sector_name?: string;
   active: boolean;
   magazine_id?: number | null;
   magazine_title?: string;
@@ -45,6 +46,8 @@ export interface Teacher {
   church_id: number;
   class_id: number;
   church_name?: string;
+  sector_id?: number;
+  sector_name?: string;
   class_name?: string;
   active: boolean;
   phone?: string;
@@ -58,6 +61,8 @@ export interface Student {
   church_id: number;
   class_id: number;
   church_name?: string;
+  sector_id?: number;
+  sector_name?: string;
   class_name?: string;
   active: boolean;
 }
@@ -69,7 +74,6 @@ export interface Magazine {
   year: number;
   category?: string;
 }
-
 
 export interface Lesson {
   id: number;
@@ -91,8 +95,12 @@ export interface AttendanceRecord {
   present: boolean;
   date: string;
   student_name?: string;
+  class_id?: number;
+  class_name?: string;
   lesson_title?: string;
   church_name?: string;
+  sector_id?: number;
+  sector_name?: string;
 }
 
 export interface Material {
@@ -116,6 +124,8 @@ export interface ScheduleRecord {
   class_name?: string;
   lesson_title?: string;
   church_name?: string;
+  sector_id?: number;
+  sector_name?: string;
 }
 
 export interface Suggestion {
