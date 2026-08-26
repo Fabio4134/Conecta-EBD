@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { GraduationCap, CheckCircle2, AlertCircle, Sparkles, UserCheck, Calendar, ArrowRight, UserPlus } from 'lucide-react';
+import { GraduationCap, CheckCircle2, AlertCircle, Sparkles, UserCheck, Calendar, ArrowRight, UserPlus, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface Props {
@@ -24,6 +24,7 @@ export default function StudentSelfRegister({ classId }: Props) {
 
   const [formData, setFormData] = useState({
     name: '',
+    phone: '',
     birth_date: ''
   });
 
@@ -46,13 +47,15 @@ export default function StudentSelfRegister({ classId }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) return setError('Por favor, informe seu nome completo.');
+    if (!formData.phone.trim()) return setError('Por favor, informe seu telefone de contato.');
 
     try {
       setSubmitting(true);
       setError('');
       await api.post(`/public/classes/${classId}/register`, {
         name: formData.name.trim(),
+        phone: formData.phone.trim(),
         birth_date: formData.birth_date ? formData.birth_date : null
       });
       setSuccess(true);
@@ -64,7 +67,7 @@ export default function StudentSelfRegister({ classId }: Props) {
   };
 
   const handleRegisterAnother = () => {
-    setFormData({ name: '', birth_date: '' });
+    setFormData({ name: '', phone: '', birth_date: '' });
     setSuccess(false);
     setError('');
   };
@@ -199,6 +202,26 @@ export default function StudentSelfRegister({ classId }: Props) {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-600 uppercase tracking-wider mb-1.5">
+                    Telefone / WhatsApp *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      required
+                      placeholder="(00) 00000-0000"
+                      className="w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-sm font-medium text-neutral-800"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                    <Phone className="absolute left-3.5 top-3.5 text-neutral-400" size={18} />
+                  </div>
+                  <p className="text-[11px] text-neutral-400 mt-1">
+                    Será usado para comunicados e avisos da turma.
+                  </p>
                 </div>
 
                 <div>

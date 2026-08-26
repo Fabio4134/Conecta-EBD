@@ -273,6 +273,59 @@ export default function ClassList({ role }: { role: string }) {
         );
     }
 
+    const downloadAllClassesPDF = () => {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as any;
+        const pageW = doc.internal.pageSize.getWidth();
+
+        // Header bar
+        doc.setFillColor(16, 185, 129);
+        doc.rect(0, 0, pageW, 24, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Conecta EBD — Relação Geral de Classes', 14, 15);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}   |   Total: ${filtered.length} classes`, pageW - 14, 15, { align: 'right' });
+
+        // Summary Metrics block
+        const activeCount = filtered.filter(c => c.active).length;
+        const inactiveCount = filtered.length - activeCount;
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Resumo: ${filtered.length} Classes Cadastradas (${activeCount} Ativas, ${inactiveCount} Inativas)`, 14, 30);
+
+        const tableData = filtered.map((c, index) => [
+            (index + 1).toString(),
+            c.name,
+            c.magazine_title || 'Nenhuma revista vinculada',
+            c.active ? 'Ativa' : 'Inativa',
+            ...(role === 'master' ? [c.church_name || ''] : [])
+        ]);
+
+        const head = [['#', 'Nome da Classe', 'Revista Vinculada', 'Status', ...(role === 'master' ? ['Igreja'] : [])]];
+
+        autoTable(doc, {
+            startY: 34,
+            head,
+            body: tableData,
+            theme: 'grid',
+            styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+            headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            alternateRowStyles: { fillColor: [240, 253, 244] },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 12 },
+                1: { fontStyle: 'bold', cellWidth: 55 },
+                2: { cellWidth: 'auto' },
+                3: { halign: 'center', cellWidth: 24 }
+            }
+        });
+
+        doc.save('relatorio-classes-ebd.pdf');
+    };
+
     // ── LIST VIEW ─────────────────────────────────────────────────────────────
     return (
         <div className="space-y-6">
@@ -281,13 +334,24 @@ export default function ClassList({ role }: { role: string }) {
                     <h1 className="text-2xl font-bold text-neutral-900">Classes</h1>
                     <p className="text-neutral-500 text-sm italic serif">Gerencie as turmas da Escola Bíblica Dominical.</p>
                 </div>
-                <button
-                    onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', magazine_id: '' }); }}
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
-                >
-                    <Plus size={18} />
-                    Nova Classe
-                </button>
+                <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+                    <button
+                        onClick={downloadAllClassesPDF}
+                        disabled={filtered.length === 0}
+                        className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-100 font-semibold text-sm disabled:opacity-50"
+                        title="Baixar lista completa de classes em PDF"
+                    >
+                        <Download size={18} />
+                        Baixar Classes (PDF)
+                    </button>
+                    <button
+                        onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', magazine_id: '' }); }}
+                        className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
+                    >
+                        <Plus size={18} />
+                        Nova Classe
+                    </button>
+                </div>
             </div>
 
             <div className="glass-panel rounded-3xl overflow-hidden">

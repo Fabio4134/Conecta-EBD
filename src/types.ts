@@ -35,6 +35,8 @@ export interface Class {
   active: boolean;
   magazine_id?: number | null;
   magazine_title?: string;
+  total_students?: number;
+  total_teachers?: number;
 }
 
 export interface Teacher {
@@ -45,11 +47,13 @@ export interface Teacher {
   church_name?: string;
   class_name?: string;
   active: boolean;
+  phone?: string;
 }
 
 export interface Student {
   id: number;
   name: string;
+  phone?: string;
   birth_date: string;
   church_id: number;
   class_id: number;

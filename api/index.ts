@@ -453,9 +453,12 @@ app.get("/api/public/classes/:id", async (req, res) => {
 
 app.post("/api/public/classes/:id/register", async (req, res) => {
   try {
-    const { name, birth_date } = req.body;
+    const { name, phone, birth_date } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: "O nome completo é obrigatório." });
+    }
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ error: "O número de telefone é obrigatório." });
     }
 
     const { data: cls, error: clsErr } = await supabase
@@ -468,17 +471,28 @@ app.post("/api/public/classes/:id/register", async (req, res) => {
       return res.status(404).json({ error: "Classe não encontrada." });
     }
 
-    const { data: student, error: insErr } = await supabase
+    let insertPayload: any = {
+      name: name.trim(),
+      phone: phone.trim(),
+      birth_date: birth_date ? birth_date : null,
+      church_id: cls.church_id,
+      class_id: cls.id,
+      active: true
+    };
+
+    let { data: student, error: insErr } = await supabase
       .from('students')
-      .insert({
-        name: name.trim(),
-        birth_date: birth_date ? birth_date : null,
-        church_id: cls.church_id,
-        class_id: cls.id,
-        active: true
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    if (insErr && insErr.code === 'PGRST204') {
+      delete insertPayload.phone;
+      insertPayload.name = `${name.trim()} (${phone.trim()})`;
+      const fallbackRes = await supabase.from('students').insert(insertPayload).select().single();
+      insErr = fallbackRes.error;
+      student = fallbackRes.data;
+    }
 
     if (insErr) {
       return res.status(500).json({ error: insErr.message || "Erro ao realizar cadastro." });
@@ -515,31 +529,61 @@ app.get("/api/students", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/students", authenticate, async (req: any, res) => {
-  const { name, birth_date, class_id } = req.body;
+  const { name, phone, birth_date, class_id } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: "Nome é obrigatório." });
+  if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
+
   const church_id = req.user.church_id;
-  const { error } = await supabase.from('students').insert({
+  let insertPayload: any = {
     name: name?.trim(),
+    phone: phone?.trim(),
     birth_date: birth_date ? birth_date : null,
     church_id,
     class_id
-  });
+  };
+
+  let { error } = await supabase.from('students').insert(insertPayload);
+  if (error && error.code === 'PGRST204') {
+    delete insertPayload.phone;
+    insertPayload.name = `${name.trim()} (${phone.trim()})`;
+    const fallback = await supabase.from('students').insert(insertPayload);
+    error = fallback.error;
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/students/:id", authenticate, async (req: any, res) => {
-  const { name, birth_date, class_id } = req.body;
-  let query = supabase.from('students').update({
+  const { name, phone, birth_date, class_id } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: "Nome é obrigatório." });
+  if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
+
+  let updatePayload: any = {
     name: name?.trim(),
+    phone: phone?.trim(),
     birth_date: birth_date ? birth_date : null,
     class_id
-  }).eq('id', req.params.id);
+  };
+
+  let query = supabase.from('students').update(updatePayload).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
   }
 
-  const { error } = await query;
+  let { error } = await query;
+  if (error && error.code === 'PGRST204') {
+    delete updatePayload.phone;
+    if (phone?.trim() && !name.includes(phone.trim())) {
+      updatePayload.name = `${name.trim()} (${phone.trim()})`;
+    }
+    let fbQuery = supabase.from('students').update(updatePayload).eq('id', req.params.id);
+    if (req.user.role !== 'master') {
+      fbQuery = fbQuery.eq('church_id', req.user.church_id);
+    }
+    const fallback = await fbQuery;
+    error = fallback.error;
+  }
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });

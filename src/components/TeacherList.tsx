@@ -6,6 +6,8 @@ import {
   Calendar, Download, GraduationCap, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TeacherList({ role }: { role: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -52,7 +54,7 @@ export default function TeacherList({ role }: { role: string }) {
 
   const handleEdit = (teacher: Teacher) => {
     setEditingId(teacher.id);
-    setFormData({ name: teacher.name, class_id: teacher.class_id.toString() });
+    setFormData({ name: teacher.name, class_id: teacher.class_id ? teacher.class_id.toString() : '' });
     setShowModal(true);
   };
 
@@ -89,6 +91,59 @@ export default function TeacherList({ role }: { role: string }) {
     ? classes.filter(c => c.church_name === filterChurch)
     : classes;
 
+  const downloadTeachersPDF = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as any;
+    const pageW = doc.internal.pageSize.getWidth();
+
+    // Header bar
+    doc.setFillColor(16, 185, 129);
+    doc.rect(0, 0, pageW, 24, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Conecta EBD — Corpo Docente (Professores)', 14, 15);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}   |   Total: ${filtered.length} professores`, pageW - 14, 15, { align: 'right' });
+
+    // Summary block
+    const activeCount = filtered.filter(t => t.active).length;
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    const filterInfo = filterClass ? `Classe: ${classes.find(c => c.id.toString() === filterClass)?.name}` : 'Todas as classes';
+    doc.text(`Filtros: ${filterInfo} ${filterChurch ? `| Igreja: ${filterChurch}` : ''}  —  Total: ${filtered.length} (${activeCount} Ativos)`, 14, 30);
+
+    const tableData = filtered.map((t, index) => [
+      (index + 1).toString(),
+      t.name,
+      t.class_name || 'Sem classe vinculada',
+      t.active ? 'Ativo' : 'Inativo',
+      ...(role === 'master' ? [t.church_name || ''] : [])
+    ]);
+
+    const head = [['#', 'Nome do Professor', 'Classe Vinculada', 'Status', ...(role === 'master' ? ['Igreja'] : [])]];
+
+    autoTable(doc, {
+      startY: 34,
+      head,
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+      headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold', halign: 'center' },
+      alternateRowStyles: { fillColor: [240, 253, 244] },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 12 },
+        1: { fontStyle: 'bold', cellWidth: 70 },
+        2: { cellWidth: 55 },
+        3: { halign: 'center', cellWidth: 25 }
+      }
+    });
+
+    doc.save('relatorio-professores-ebd.pdf');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -96,13 +151,24 @@ export default function TeacherList({ role }: { role: string }) {
           <h1 className="text-2xl font-bold text-neutral-900">Professores</h1>
           <p className="text-neutral-500 text-sm italic serif">Corpo docente da Escola Bíblica.</p>
         </div>
-        <button
-          onClick={() => { setShowModal(true); setEditingId(null); }}
-          className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
-        >
-          <Plus size={18} />
-          Novo Professor
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          <button
+            onClick={downloadTeachersPDF}
+            disabled={filtered.length === 0}
+            className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-100 font-semibold text-sm disabled:opacity-50"
+            title="Baixar lista completa de professores em PDF"
+          >
+            <Download size={18} />
+            Baixar Professores (PDF)
+          </button>
+          <button
+            onClick={() => { setShowModal(true); setEditingId(null); }}
+            className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
+          >
+            <Plus size={18} />
+            Novo Professor
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel rounded-3xl overflow-hidden">
