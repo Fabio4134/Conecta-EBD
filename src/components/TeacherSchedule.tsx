@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { ScheduleRecord, Teacher, Class, Lesson } from '../types';
-import { Calendar, Download, Search, Plus, Edit2, Trash2, X } from 'lucide-react';
+import {
+  Calendar, Download, Search, Plus, Edit2, Trash2, X,
+  ChevronDown, ChevronUp, Users, BookOpen, Clock, Layers
+} from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { formatDate } from '../utils';
 
 export default function TeacherSchedule({ role }: { role: string }) {
@@ -16,6 +19,8 @@ export default function TeacherSchedule({ role }: { role: string }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [filterClass, setFilterClass] = useState('');
   const [filterDate, setFilterDate] = useState('');
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+
   const [formData, setFormData] = useState({
     teacher_id: '',
     class_id: '',
@@ -42,8 +47,8 @@ export default function TeacherSchedule({ role }: { role: string }) {
       a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
     );
     setTeachers(sortedT);
-    setClasses(cRes.data);
-    setLessons(lRes.data);
+    setClasses(cRes.data || []);
+    setLessons(lRes.data || []);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,6 +115,25 @@ export default function TeacherSchedule({ role }: { role: string }) {
     return grouped;
   }, [filteredSchedule]);
 
+  const toggleClass = (className: string) => {
+    setExpandedClasses(prev => ({
+      ...prev,
+      [className]: !prev[className]
+    }));
+  };
+
+  const expandAll = () => {
+    const all: Record<string, boolean> = {};
+    Object.keys(scheduleByClass).forEach(c => {
+      all[c] = true;
+    });
+    setExpandedClasses(all);
+  };
+
+  const collapseAll = () => {
+    setExpandedClasses({});
+  };
+
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as any;
     const pageW = doc.internal.pageSize.getWidth();
@@ -165,6 +189,8 @@ export default function TeacherSchedule({ role }: { role: string }) {
     doc.save('escala-professores-ebd.pdf');
   };
 
+  const classNamesList = Object.keys(scheduleByClass);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -174,15 +200,16 @@ export default function TeacherSchedule({ role }: { role: string }) {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => { setShowModal(true); setEditingId(null); }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
+            onClick={() => { setShowModal(true); setEditingId(null); setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '' }); }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
           >
             <Plus size={18} />
             Nova Escala
           </button>
           <button
             onClick={downloadPDF}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100"
+            disabled={filteredSchedule.length === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 font-semibold text-sm disabled:opacity-50"
           >
             <Download size={18} />
             Baixar Escala
@@ -190,120 +217,237 @@ export default function TeacherSchedule({ role }: { role: string }) {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-neutral-100 flex flex-wrap gap-4">
-        <div className="flex-1 min-w-[200px]">
+      {/* Barra de Filtros */}
+      <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm flex flex-col sm:flex-row items-center gap-3">
+        <div className="w-full sm:flex-1">
           <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Filtrar por Classe</label>
           <select
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none text-sm"
+            className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
             value={filterClass}
             onChange={(e) => setFilterClass(e.target.value)}
           >
-            <option value="">Todas as Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value="">Todas as Classes ({schedule.length} escalas no total)</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id.toString()}>{c.name}</option>
+            ))}
           </select>
         </div>
-        <div className="flex-1 min-w-[200px]">
+
+        <div className="w-full sm:w-60">
           <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Filtrar por Data</label>
           <input
             type="date"
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg outline-none text-sm"
+            className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-700 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm"
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
           />
         </div>
-        <button
-          onClick={() => { setFilterClass(''); setFilterDate(''); }}
-          className="self-end px-4 py-2 text-sm font-bold text-neutral-400 hover:text-neutral-600 transition-colors"
-        >
-          Limpar Filtros
-        </button>
+
+        {(filterClass || filterDate) && (
+          <button
+            onClick={() => { setFilterClass(''); setFilterDate(''); }}
+            className="sm:self-end px-3 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+          >
+            Limpar Filtros
+          </button>
+        )}
       </div>
 
-      {Object.entries(scheduleByClass).map(([className, items]) => (
-        <div key={className} className="space-y-4">
-          <h2 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
-            <div className="w-2 h-6 bg-indigo-500 rounded-full"></div>
-            {className}
-          </h2>
-          <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-neutral-50 text-[10px] uppercase tracking-widest text-neutral-400 font-bold">
-                    <th className="px-6 py-4">Data</th>
-                    <th className="px-6 py-4">Professor</th>
-                    <th className="px-6 py-4">Lição</th>
-                    {role === 'master' && <th className="px-6 py-4">Igreja</th>}
-                    <th className="px-6 py-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-neutral-50 transition-colors group">
-                      <td className="px-6 py-4 text-sm font-mono text-neutral-500">{formatDate(item.date)}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-neutral-800">{item.teacher_name}</td>
-                      <td className="px-6 py-4 text-sm text-neutral-500 italic">{item.lesson_title}</td>
-                      {role === 'master' && <td className="px-6 py-4 text-sm text-neutral-500">{item.church_name}</td>}
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => handleEdit(item)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
-                            <Edit2 size={16} />
-                          </button>
-                          <button onClick={() => handleDelete(item.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* Controles de Expansão / Resumo */}
+      {classNamesList.length > 0 && (
+        <div className="flex items-center justify-between px-1 text-xs text-neutral-500 font-medium">
+          <span>
+            Exibindo <strong>{filteredSchedule.length}</strong> escalas divididas em <strong>{classNamesList.length}</strong> classes
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={expandAll}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              Expandir Todas
+            </button>
+            <span>•</span>
+            <button
+              onClick={collapseAll}
+              className="text-xs font-bold text-neutral-500 hover:text-neutral-700 transition-colors"
+            >
+              Recolher Todas
+            </button>
           </div>
-        </div>
-      ))}
-
-      {schedule.length === 0 && (
-        <div className="bg-white rounded-2xl p-12 text-center text-neutral-400 italic border border-neutral-100">
-          Nenhuma escala cadastrada.
         </div>
       )}
 
+      {/* Lista de Classes como Botões Clicáveis (Accordions) */}
+      <div className="space-y-4">
+        {classNamesList.map((className) => {
+          const items = scheduleByClass[className];
+          // Se o usuário filtrou especificamente por classe ou abriu manualmente
+          const isExpanded = filterClass ? true : !!expandedClasses[className];
+          const nextLesson = items[0];
+
+          return (
+            <div
+              key={className}
+              className="glass-panel rounded-3xl overflow-hidden border border-white/80 shadow-sm transition-all bg-white/80"
+            >
+              {/* Botão Clicável do Cabeçalho da Classe */}
+              <button
+                type="button"
+                onClick={() => toggleClass(className)}
+                className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-indigo-50/40 transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-500/20 shrink-0 group-hover:scale-105 transition-transform">
+                    <Users size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base font-bold text-neutral-900 group-hover:text-indigo-700 transition-colors truncate">
+                        {className}
+                      </h2>
+                      <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-full">
+                        {items.length} {items.length === 1 ? 'aula' : 'aulas'}
+                      </span>
+                    </div>
+
+                    {nextLesson && (
+                      <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                        Próxima aula: <strong className="text-neutral-700 font-semibold">{formatDate(nextLesson.date)}</strong> • {nextLesson.teacher_name} ({nextLesson.lesson_title})
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="hidden sm:inline-block text-xs font-bold text-indigo-600 bg-indigo-50 group-hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200/60 transition-colors">
+                    {isExpanded ? 'Ocultar Escala' : 'Abrir Escala'}
+                  </span>
+                  <div className={`w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-all ${isExpanded ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={18} />
+                  </div>
+                </div>
+              </button>
+
+              {/* Tabela de Escalas Expansível */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="border-t border-neutral-200/60 overflow-hidden"
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-neutral-50/80 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
+                            <th className="px-6 py-3.5">Data</th>
+                            <th className="px-6 py-3.5">Professor Responsável</th>
+                            <th className="px-6 py-3.5">Lição Programada</th>
+                            {role === 'master' && <th className="px-6 py-3.5">Igreja</th>}
+                            <th className="px-6 py-3.5 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-200/50">
+                          {items.map((item) => (
+                            <tr key={item.id} className="hover:bg-indigo-50/30 transition-colors group">
+                              <td className="px-6 py-4 text-sm font-mono font-bold text-indigo-700 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar size={14} className="text-indigo-500" />
+                                  {formatDate(item.date)}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm font-bold text-neutral-800">
+                                {item.teacher_name}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-neutral-600 italic">
+                                {item.lesson_title}
+                              </td>
+                              {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{item.church_name}</td>}
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleEdit(item)}
+                                    className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                    title="Editar Escala"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(item.id)}
+                                    className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Excluir Escala"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+
+      {schedule.length === 0 && (
+        <div className="glass-panel rounded-3xl p-12 text-center text-neutral-400 italic border border-neutral-100">
+          Nenhuma escala cadastrada no momento. Clique em "+ Nova Escala" para começar.
+        </div>
+      )}
+
+      {/* Modal de Criação / Edição */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-            <h2 className="text-xl font-bold text-neutral-900 mb-6">{editingId ? 'Editar Escala' : 'Nova Escala'}</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-neutral-900">{editingId ? 'Editar Escala' : 'Nova Escala'}</h2>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Professor</label>
-                <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.teacher_id} onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}>
-                  <option value="">Selecione</option>
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Professor</label>
+                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.teacher_id} onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}>
+                  <option value="">Selecione o professor</option>
                   {[...teachers].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })).map(t => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Classe</label>
-                <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.class_id} onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}>
-                  <option value="">Selecione</option>
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Classe</label>
+                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.class_id} onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}>
+                  <option value="">Selecione a classe</option>
                   {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Lição</label>
-                <select required className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.lesson_id} onChange={(e) => setFormData({ ...formData, lesson_id: e.target.value })}>
-                  <option value="">Selecione</option>
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Lição</label>
+                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.lesson_id} onChange={(e) => setFormData({ ...formData, lesson_id: e.target.value })}>
+                  <option value="">Selecione a lição</option>
                   {lessons.map(l => <option key={l.id} value={l.id}>{l.number}. {l.title}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Data</label>
-                <input required type="date" className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl outline-none" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Data</label>
+                <input required type="date" className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
               </div>
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-neutral-200 rounded-xl font-medium">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium shadow-lg">Salvar</button>
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-all font-semibold text-sm">Cancelar</button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all">Salvar</button>
               </div>
             </form>
           </motion.div>
@@ -312,4 +456,3 @@ export default function TeacherSchedule({ role }: { role: string }) {
     </div>
   );
 }
-
