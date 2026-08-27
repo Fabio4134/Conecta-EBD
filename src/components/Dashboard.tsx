@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api.js';
 import { motion } from 'motion/react';
-import { Users, GraduationCap, CheckSquare, Calendar, TrendingUp } from 'lucide-react';
+import { Users, GraduationCap, CheckSquare, Calendar, TrendingUp, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '../utils.js';
 
-export default function Dashboard({ role }: { role: string }) {
+interface DashboardProps {
+  role: string;
+  onNavigateToAttendance?: () => void;
+}
+
+export default function Dashboard({ role, onNavigateToAttendance }: DashboardProps) {
   const [stats, setStats] = useState({
     students: 0,
     teachers: 0,
@@ -42,18 +47,61 @@ export default function Dashboard({ role }: { role: string }) {
   }, []);
 
   const cards = [
+    { label: 'Chamadas Realizadas', value: stats.attendance, icon: CheckSquare, color: 'bg-emerald-600', isAction: true },
     { label: 'Total de Alunos', value: stats.students, icon: GraduationCap, color: 'bg-blue-500' },
-    { label: 'Professores', value: stats.teachers, icon: Users, color: 'bg-emerald-500' },
+    { label: 'Professores', value: stats.teachers, icon: Users, color: 'bg-indigo-500' },
     { label: 'Classes Ativas', value: stats.classes, icon: Calendar, color: 'bg-purple-500' },
-    { label: 'Chamadas Realizadas', value: stats.attendance, icon: CheckSquare, color: 'bg-amber-500' },
   ];
+
+  const todayFormatted = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date());
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold text-neutral-900 tracking-tight">Bem-vindo ao Painel</h1>
-        <p className="text-neutral-500 mt-1 italic serif">Visão geral das atividades da sua Escola Bíblica.</p>
-      </header>
+      {/* Hero Banner de Ação Rápida de Chamada */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-neutral-900 via-emerald-950 to-neutral-900 border border-emerald-500/30 p-6 sm:p-8 shadow-2xl shadow-emerald-950/20 text-white"
+      >
+        {/* Background glow & accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+              <Sparkles size={14} className="text-emerald-400 animate-pulse" />
+              <span>Ação Principal da EBD</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span className="capitalize">{todayFormatted}</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Realizar Chamada de Hoje
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-300">
+              Acesse a lista de alunos, marque presenças, registre visitantes e mantenha o histórico da sua classe sempre atualizado com apenas 1 clique.
+            </p>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onNavigateToAttendance}
+            className="shrink-0 w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 text-neutral-950 font-black text-base shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:from-emerald-400 hover:to-teal-300 transition-all border border-white/40 cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-neutral-950/10 flex items-center justify-center text-neutral-950">
+              <CheckSquare size={20} strokeWidth={2.5} />
+            </div>
+            <span>Fazer Chamada Agora</span>
+            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </motion.button>
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map((card, i) => (
@@ -62,7 +110,10 @@ export default function Dashboard({ role }: { role: string }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="glass-card p-6 rounded-2xl flex items-center gap-4 relative overflow-hidden group"
+            onClick={card.isAction ? onNavigateToAttendance : undefined}
+            className={`glass-card p-6 rounded-2xl flex items-center gap-4 relative overflow-hidden group ${
+              card.isAction ? 'cursor-pointer ring-2 ring-emerald-500/30 hover:ring-emerald-500/60 bg-emerald-50/40' : ''
+            }`}
           >
             {/* Subtle highlight effect on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -71,7 +122,10 @@ export default function Dashboard({ role }: { role: string }) {
               <card.icon size={26} strokeWidth={1.5} />
             </div>
             <div className="relative z-10">
-              <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.15em]">{card.label}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-[0.15em]">{card.label}</p>
+                {card.isAction && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Abrir</span>}
+              </div>
               <p className="text-3xl font-black text-neutral-800 tracking-tight mt-1">{card.value}</p>
             </div>
           </motion.div>

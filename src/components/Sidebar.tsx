@@ -26,6 +26,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
 
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
+    { id: 'chamadas', label: 'Chamadas', icon: CheckSquare, featured: true, badge: 'Mais Usado' },
     ...(isMasterOrSec ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
     { id: 'mapa', label: 'Mapa Salvador', icon: MapIcon },
     { id: 'perfil', label: 'Editar Perfil', icon: Building2 },
@@ -37,7 +38,6 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     { id: 'professores', label: 'Professores', icon: Users },
     { id: 'alunos', label: 'Alunos', icon: GraduationCap },
     { id: 'escala', label: 'Escala de Prof.', icon: Calendar },
-    { id: 'chamadas', label: 'Chamadas', icon: CheckSquare },
     { id: 'material', label: 'Material de Apoio', icon: Download },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart2 },
     { id: 'estatisticas', label: 'Estatísticas', icon: TrendingUp },
@@ -96,8 +96,9 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
         </div>
 
         <nav className="flex-1 px-3.5 py-2.5 space-y-1 overflow-y-auto custom-scrollbar relative z-10">
-          {menus.map((menu) => {
+          {menus.map((menu: any) => {
             const isActive = activeMenu === menu.id;
+            const isFeatured = menu.featured;
             return (
               <button
                 key={menu.id}
@@ -106,17 +107,35 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
                   setIsOpen?.(false);
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden active:scale-[0.98]",
+                  "w-full flex items-center justify-between gap-3 px-3.5 py-2.5 sm:py-3 rounded-xl transition-all duration-200 text-sm font-medium group relative overflow-hidden active:scale-[0.98]",
+                  isFeatured && !isActive && "bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border border-emerald-500/30 text-emerald-300 hover:border-emerald-500/50 hover:bg-emerald-500/20 shadow-sm shadow-emerald-950/40",
                   isActive
-                    ? "text-emerald-400 bg-white/10 shadow-inner shadow-white/5 ring-1 ring-white/10"
-                    : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
+                    ? "text-emerald-400 bg-white/10 shadow-inner shadow-white/5 ring-1 ring-white/10 font-bold"
+                    : !isFeatured && "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
                 )}
               >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-7 bg-emerald-500 rounded-r-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
                 )}
-                <menu.icon size={isActive ? 19 : 18} className={cn("transition-all duration-200 shrink-0", isActive ? "text-emerald-400" : "text-neutral-500 group-hover:text-neutral-300")} />
-                <span className="relative z-10 truncate text-left">{menu.label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <menu.icon
+                    size={isActive || isFeatured ? 19 : 18}
+                    className={cn(
+                      "transition-all duration-200 shrink-0",
+                      isActive
+                        ? "text-emerald-400"
+                        : isFeatured
+                        ? "text-emerald-400 group-hover:scale-110 drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                        : "text-neutral-500 group-hover:text-neutral-300"
+                    )}
+                  />
+                  <span className={cn("truncate text-left", isFeatured && "font-semibold text-emerald-100")}>{menu.label}</span>
+                </div>
+                {menu.badge && (
+                  <span className="shrink-0 text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-emerald-500 text-neutral-950 shadow-sm shadow-emerald-500/30 animate-pulse">
+                    {menu.badge}
+                  </span>
+                )}
               </button>
             );
           })}

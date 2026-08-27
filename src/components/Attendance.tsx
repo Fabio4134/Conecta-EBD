@@ -113,32 +113,51 @@ export default function Attendance({ role }: { role: string }) {
     return matchesClass && matchesDate;
   });
 
+  const handleSelectAll = (present: boolean) => {
+    if (alreadyExists && role !== 'master') return;
+    const newAttendance = { ...attendance };
+    filteredStudents.forEach(s => {
+      newAttendance[s.id] = present;
+    });
+    setAttendance(newAttendance);
+  };
+
+  const totalClassStudents = filteredStudents.length;
+  const presentCount = filteredStudents.filter(s => attendance[s.id]).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Realizar Chamada</h1>
-          <p className="text-neutral-500 text-sm italic serif">Registre a presença dos alunos para a lição de hoje.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-1">
+            <Check size={14} className="text-emerald-600" />
+            <span>Frequência da EBD</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">Realizar Chamada</h1>
+          <p className="text-neutral-500 text-sm italic serif">Registre a presença dos alunos para a lição de hoje com agilidade.</p>
         </div>
-        <button
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleSubmit}
           disabled={loading || !selectedLesson || !selectedClassId || (alreadyExists && role !== 'master')}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 disabled:opacity-50"
+          className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm px-8 py-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-emerald-500/25 border border-emerald-400/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
-          <Save size={18} />
-          {loading ? 'Salvando...' : 'Finalizar Chamada'}
-        </button>
+          <Save size={19} strokeWidth={2.5} />
+          <span>{loading ? 'Gravando Chamada...' : 'Finalizar e Salvar Chamada'}</span>
+        </motion.button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 space-y-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-100 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Filtro: Revista</label>
                 <div className="relative">
                   <select
-                    className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none text-sm font-medium"
                     value={selectedMagazine}
                     onChange={(e) => {
                       setSelectedMagazine(e.target.value);
@@ -150,14 +169,14 @@ export default function Attendance({ role }: { role: string }) {
                       <option key={m.id} value={m.id}>{m.title}</option>
                     ))}
                   </select>
-                  <BookOpen className="absolute left-3 top-2.5 text-neutral-400" size={18} />
+                  <BookOpen className="absolute left-3 top-3 text-neutral-400" size={18} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Filtro: Lição</label>
                 <div className="relative">
                   <select
-                    className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none text-sm font-medium"
                     value={selectedLesson}
                     onChange={(e) => setSelectedLesson(e.target.value)}
                     disabled={!selectedMagazine}
@@ -167,14 +186,14 @@ export default function Attendance({ role }: { role: string }) {
                       <option key={l.id} value={l.id}>{l.number}. {l.title}</option>
                     ))}
                   </select>
-                  <BookOpen className="absolute left-3 top-2.5 text-neutral-400" size={18} />
+                  <BookOpen className="absolute left-3 top-3 text-neutral-400" size={18} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Classe</label>
                 <div className="relative">
                   <select
-                    className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none appearance-none text-sm font-medium"
                     value={selectedClassId}
                     onChange={(e) => {
                       const classId = e.target.value;
@@ -193,7 +212,7 @@ export default function Attendance({ role }: { role: string }) {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <Layers className="absolute left-3 top-2.5 text-neutral-400" size={18} />
+                  <Layers className="absolute left-3 top-3 text-neutral-400" size={18} />
                 </div>
               </div>
             </div>
@@ -202,17 +221,43 @@ export default function Attendance({ role }: { role: string }) {
               <div className="flex-1">
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Buscar Aluno</label>
                 <div className="relative">
-                  <Search size={18} className="absolute left-3 top-2.5 text-neutral-400" />
+                  <Search size={18} className="absolute left-3 top-3 text-neutral-400" />
                   <input
                     type="text"
                     placeholder="Nome do aluno..."
-                    className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
               </div>
             </div>
+
+            {selectedClassId && selectedLesson && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/70">
+                <div className="flex items-center gap-4 text-xs font-bold">
+                  <span className="text-neutral-600">Total: <span className="text-neutral-900">{totalClassStudents}</span></span>
+                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Presentes: {presentCount}</span>
+                  <span className="text-neutral-500">Ausentes: {totalClassStudents - presentCount}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll(true)}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
+                  >
+                    Todos Presentes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll(false)}
+                    className="px-3 py-1 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg text-xs font-bold transition-all active:scale-95"
+                  >
+                    Limpar Todos
+                  </button>
+                </div>
+              </div>
+            )}
 
             {alreadyExists && (
               <div className="bg-amber-50 text-amber-700 p-4 rounded-xl border border-amber-200 flex items-center gap-3">
@@ -250,7 +295,7 @@ export default function Attendance({ role }: { role: string }) {
                     key={student.id}
                     onClick={() => handleToggle(student.id)}
                     className={`flex items-center justify-between p-4 rounded-xl border transition-all ${attendance[student.id]
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-sm ring-1 ring-emerald-500/20'
                       : 'bg-white border-neutral-100 text-neutral-600 hover:border-neutral-200'
                       }`}
                   >
@@ -258,12 +303,33 @@ export default function Attendance({ role }: { role: string }) {
                       <p className="font-bold text-sm">{student.name}</p>
                       <p className="text-[10px] uppercase tracking-widest opacity-60 font-bold">{student.class_name}</p>
                     </div>
-                    {attendance[student.id] ? <Check size={20} className="text-emerald-600" /> : <div className="w-5 h-5 rounded-full border-2 border-neutral-200" />}
+                    {attendance[student.id] ? (
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                        <Check size={16} strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-full border-2 border-neutral-300" />
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
+
+          {selectedClassId && selectedLesson && (
+            <div className="flex justify-end pt-2">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSubmit}
+                disabled={loading || (alreadyExists && role !== 'master')}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm px-8 py-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-emerald-500/25 border border-emerald-400/30 disabled:opacity-40 cursor-pointer"
+              >
+                <Save size={19} strokeWidth={2.5} />
+                <span>{loading ? 'Gravando Chamada...' : 'Finalizar e Salvar Chamada'}</span>
+              </motion.button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
