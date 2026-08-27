@@ -258,7 +258,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
               setShowModal(true);
               setEditingId(null);
               setSelectedMagazine('');
-              setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '' });
+              setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '', church_id: '', sector_id: '' });
             }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
           >

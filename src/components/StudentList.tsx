@@ -222,7 +222,7 @@ export default function StudentList({ role }: { role: string }) {
             onClick={() => {
               setShowModal(true);
               setEditingId(null);
-              setFormData({ name: '', phone: '', birth_date: '', class_id: '' });
+              setFormData({ name: '', phone: '', birth_date: '', class_id: '', church_id: '', sector_id: '' });
             }}
             className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
           >

@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 import Pagination from './Pagination.js';
 
 interface SuggestionsProps {
-    role: 'master' | 'standard';
+    role: string;
 }
 
 export default function Suggestions({ role }: SuggestionsProps) {

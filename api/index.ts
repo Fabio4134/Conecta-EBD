@@ -164,6 +164,11 @@ app.patch("/api/classes/:id/toggle", authenticate, async (req: any, res) => {
   if (error || !cls) return res.status(404).json({ error: "Not found" });
   if (!isGlobalRole(req.user.role) && cls.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
+  const { error: updateError } = await supabase.from('classes').update({ active: cls.active ? 0 : 1 }).eq('id', req.params.id);
+  if (updateError) return res.status(500).json({ error: updateError.message });
+  res.json({ success: true });
+});
+
 // Sectors
 app.get("/api/sectors", async (req, res) => {
   const { data: sectors, error } = await supabase
