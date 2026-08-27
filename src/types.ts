@@ -20,7 +20,7 @@ export interface User {
   id: number;
   name: string;
   email?: string;
-  role: 'master' | 'standard';
+  role: 'master' | 'standard' | 'secretary';
   church_id: number;
   church_name?: string;
   authorized?: boolean;

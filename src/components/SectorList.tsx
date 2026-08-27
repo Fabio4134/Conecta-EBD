@@ -89,6 +89,8 @@ export default function SectorList({ role }: SectorListProps) {
   const isAll = pageSize >= filtered.length || pageSize >= 9999;
   const paginatedSectors = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const isMasterOrSec = role === 'master' || role === 'secretary';
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -97,7 +99,7 @@ export default function SectorList({ role }: SectorListProps) {
           <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Setores</h1>
           <p className="text-sm text-neutral-500 mt-0.5">Gerencie os setores do sistema</p>
         </div>
-        {role === 'master' && (
+        {isMasterOrSec && (
           <button
             onClick={openCreate}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-0.5"
@@ -214,16 +216,20 @@ export default function SectorList({ role }: SectorListProps) {
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-md shadow-emerald-500/20">
                     <MapPin size={18} className="text-white" />
                   </div>
-                  {role === 'master' && (
+                  {isMasterOrSec && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEdit(s)}
-                        className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-emerald-600 transition-colors">
+                        className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-emerald-600 transition-colors"
+                        title="Editar Setor">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => handleDelete(s)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-500 hover:text-red-500 transition-colors">
-                        <Trash2 size={15} />
-                      </button>
+                      {role === 'master' && (
+                        <button onClick={() => handleDelete(s)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-500 hover:text-red-500 transition-colors"
+                          title="Excluir Setor">
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

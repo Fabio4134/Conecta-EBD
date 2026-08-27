@@ -15,7 +15,7 @@ function cn(...inputs: ClassValue[]) {
 interface SidebarProps {
   activeMenu: string;
   setActiveMenu: (menu: string) => void;
-  role: 'master' | 'standard';
+  role: 'master' | 'standard' | 'secretary' | string;
   churchName?: string;
   onLogout: () => void;
   isOpen?: boolean;
@@ -23,9 +23,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, onLogout, isOpen, setIsOpen }: SidebarProps) {
+  const isMasterOrSec = role === 'master' || role === 'secretary';
+
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
-    ...(role === 'master' ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
+    ...(isMasterOrSec ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
     { id: 'perfil', label: 'Editar Perfil', icon: Building2 },
     { id: 'igreja', label: 'Igreja', icon: Church },
     { id: 'gerador_ia', label: 'Gerador IA de Lições', icon: Sparkles },
@@ -44,7 +46,8 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
     { id: 'senha', label: 'Trocar Senha', icon: Key },
   ];
 
-
+  const roleLabel = role === 'master' ? 'MASTER' : role === 'secretary' ? 'SECRETÁRIO(A)' : 'PADRÃO';
+  const roleBadgeColor = role === 'master' ? 'text-emerald-400/90' : role === 'secretary' ? 'text-sky-400' : 'text-neutral-400';
 
   return (
     <>
@@ -71,7 +74,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
               </div>
               <div>
                 <h1 className="text-white font-bold tracking-tight text-base sm:text-lg leading-tight">Conecta EBD</h1>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-400/90 font-bold mt-0.5">{role}</p>
+                <p className={cn("text-[10px] uppercase tracking-[0.2em] font-bold mt-0.5", roleBadgeColor)}>{roleLabel}</p>
               </div>
             </div>
             <button

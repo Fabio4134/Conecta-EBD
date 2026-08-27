@@ -300,9 +300,11 @@ export default function Attendance({ role }: { role: string }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${record.present ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-red-500 ring-2 ring-red-100'}`}></span>
-                    <button onClick={() => handleDelete(record.id)} className="p-1.5 text-neutral-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Excluir Registro">
-                      <Trash2 size={14} />
-                    </button>
+                    {role === 'master' && (
+                      <button onClick={() => handleDelete(record.id)} className="p-1.5 text-neutral-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Excluir Registro">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

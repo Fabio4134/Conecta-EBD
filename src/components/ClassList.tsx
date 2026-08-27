@@ -12,6 +12,7 @@ import autoTable from 'jspdf-autotable';
 import Pagination from './Pagination.js';
 
 export default function ClassList({ role }: { role: string }) {
+    const isMasterOrSec = role === 'master' || role === 'secretary';
     const [classes, setClasses] = useState<Class[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [churches, setChurches] = useState<Church[]>([]);
@@ -42,8 +43,8 @@ export default function ClassList({ role }: { role: string }) {
             const [clsRes, magRes, secRes, chuRes] = await Promise.all([
                 api.get('/classes'),
                 api.get('/magazines'),
-                role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-                role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+                isMasterOrSec ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+                isMasterOrSec ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
             ]);
             setClasses(clsRes.data || []);
             setMagazines(magRes.data || []);
@@ -136,7 +137,7 @@ export default function ClassList({ role }: { role: string }) {
                 name: formData.name.trim(),
                 magazine_id: formData.magazine_id ? Number(formData.magazine_id) : null
             };
-            if (role === 'master' && formData.church_id) {
+            if (isMasterOrSec && formData.church_id) {
                 payload.church_id = parseInt(formData.church_id);
             }
 
@@ -166,6 +167,9 @@ export default function ClassList({ role }: { role: string }) {
     };
 
     const handleDelete = async (id: number) => {
+        if (role === 'secretary') {
+            return alert('Secretários não possuem permissão para excluir registros.');
+        }
         if (confirm('Deseja realmente excluir esta classe?')) {
             try {
                 await api.delete(`/classes/${id}`);
@@ -362,10 +366,10 @@ export default function ClassList({ role }: { role: string }) {
             c.name,
             c.magazine_title || 'Nenhuma revista vinculada',
             c.active ? 'Ativa' : 'Inativa',
-            ...(role === 'master' ? [c.church_name || '—', c.sector_name || '—'] : [])
+            ...(isMasterOrSec ? [c.church_name || '—', c.sector_name || '—'] : [])
         ]);
 
-        const head = [['#', 'Nome da Classe', 'Revista Vinculada', 'Status', ...(role === 'master' ? ['Congregação / Igreja', 'Setor'] : [])]];
+        const head = [['#', 'Nome da Classe', 'Revista Vinculada', 'Status', ...(isMasterOrSec ? ['Congregação / Igreja', 'Setor'] : [])]];
 
         autoTable(doc, {
             startY: 34,
@@ -430,7 +434,7 @@ export default function ClassList({ role }: { role: string }) {
                         />
                     </div>
 
-                    {role === 'master' && sectors.length > 0 && (
+                    {isMasterOrSec && sectors.length > 0 && (
                         <select
                             className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
                             value={filterSector}
@@ -447,7 +451,7 @@ export default function ClassList({ role }: { role: string }) {
                         </select>
                     )}
 
-                    {role === 'master' && availableChurches.length > 0 && (
+                    {isMasterOrSec && availableChurches.length > 0 && (
                         <select
                             className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
                             value={filterChurch}
@@ -458,7 +462,7 @@ export default function ClassList({ role }: { role: string }) {
                         >
                             <option value="">Todas as Congregações</option>
                             {availableChurches.map(church => (
-                                <option key={church.id} value={church.id.toString()}>{church.name}</option>
+                                <option key={church.id} value={church.name}>{church.name}</option>
                             ))}
                         </select>
                     )}
@@ -469,7 +473,7 @@ export default function ClassList({ role }: { role: string }) {
                         <thead>
                             <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
                                 <th className="px-6 py-4">Classe</th>
-                                {role === 'master' && <th className="px-6 py-4">Igreja</th>}
+                                {isMasterOrSec && <th className="px-6 py-4">Igreja</th>}
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
@@ -491,7 +495,7 @@ export default function ClassList({ role }: { role: string }) {
                                             </div>
                                         )}
                                     </td>
-                                    {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{cls.church_name}</td>}
+                                    {isMasterOrSec && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{cls.church_name}</td>}
                                     <td className="px-6 py-4">
                                         <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-widest ${cls.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
                                             {cls.active ? 'Ativa' : 'Inativa'}
@@ -518,9 +522,11 @@ export default function ClassList({ role }: { role: string }) {
                                             <button onClick={() => handleEdit(cls)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
                                                 <Edit2 size={16} />
                                             </button>
-                                            <button onClick={() => handleDelete(cls.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {role !== 'secretary' && (
+                                                <button onClick={() => handleDelete(cls.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -578,7 +584,7 @@ export default function ClassList({ role }: { role: string }) {
                                 />
                             </div>
 
-                            {role === 'master' && (
+                            {isMasterOrSec && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                                     <div>
                                         <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
@@ -602,7 +608,7 @@ export default function ClassList({ role }: { role: string }) {
                                             Congregação / Igreja *
                                         </label>
                                         <select
-                                            required={role === 'master'}
+                                            required={isMasterOrSec}
                                             className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
                                             value={formData.church_id}
                                             onChange={(e) => {

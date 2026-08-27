@@ -127,9 +127,10 @@ export default function UserManagement() {
                   <td className="px-6 py-4 text-sm text-neutral-500">{user.church_name || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-widest ${
-                      user.role === 'master' ? 'bg-indigo-100 text-indigo-600' : 'bg-neutral-100 text-neutral-600'
+                      user.role === 'master' ? 'bg-indigo-100 text-indigo-600' :
+                      user.role === 'secretary' ? 'bg-sky-100 text-sky-700' : 'bg-neutral-100 text-neutral-600'
                     }`}>
-                      {user.role}
+                      {user.role === 'master' ? 'Master' : user.role === 'secretary' ? 'Secretário(a)' : 'Padrão'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -179,11 +180,11 @@ export default function UserManagement() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl"
           >
-            <h2 className="text-xl font-bold text-neutral-900 mb-6">Editar Usuário</h2>
+            <h3 className="text-lg font-bold text-neutral-900 mb-4">Editar Usuário</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Nome</label>
@@ -222,6 +223,7 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                 >
                   <option value="standard">Padrão</option>
+                  <option value="secretary">Secretário(a)</option>
                   <option value="master">Master</option>
                 </select>
               </div>

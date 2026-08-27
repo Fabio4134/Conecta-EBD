@@ -87,18 +87,20 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
     const isAll = pageSize >= filtered.length || pageSize >= 9999;
     const paginatedChurches = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+    const isMasterOrSec = role === 'master' || role === 'secretary';
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-900">
-                        {role === 'master' ? 'Igrejas' : 'Minha Congregação'}
+                        {isMasterOrSec ? 'Igrejas' : 'Minha Congregação'}
                     </h1>
                     <p className="text-neutral-500 text-sm italic serif">
-                        {role === 'master' ? 'Gerencie todas as igrejas cadastradas no sistema.' : 'Informações da sua congregação vinculada.'}
+                        {isMasterOrSec ? 'Gerencie todas as igrejas cadastradas no sistema.' : 'Informações da sua congregação vinculada.'}
                     </p>
                 </div>
-                {role === 'master' && (
+                {isMasterOrSec && (
                     <button
                         onClick={() => { setShowModal(true); setEditingId(null); setFormData({ name: '', type: '', pastor: '', members: '', sector_id: '' }); }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
@@ -110,7 +112,7 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
-                {role === 'master' && (
+                {isMasterOrSec && (
                     <div className="p-4 border-b border-neutral-100 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         <div className="flex items-center gap-2 flex-1">
                             <Search size={16} className="text-neutral-400" />
@@ -153,7 +155,7 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                                 <th className="px-6 py-4">Tipo</th>
                                 <th className="px-6 py-4">Pastor</th>
                                 <th className="px-6 py-4">Membros</th>
-                                {role === 'master' && <th className="px-6 py-4 text-right">Ações</th>}
+                                {isMasterOrSec && <th className="px-6 py-4 text-right">Ações</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
@@ -186,15 +188,17 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                                             {church.members ?? 0}
                                         </div>
                                     </td>
-                                    {role === 'master' && (
+                                    {isMasterOrSec && (
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleEdit(church)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                                                <button onClick={() => handleEdit(church)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Editar Igreja">
                                                     <Edit2 size={16} />
                                                 </button>
-                                                <button onClick={() => handleDelete(church.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {role === 'master' && (
+                                                    <button onClick={() => handleDelete(church.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Excluir Igreja">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     )}

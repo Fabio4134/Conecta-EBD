@@ -446,14 +446,16 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
                         >
                           <Edit2 size={16} />
                         </button>
-                        <button
-                          onClick={() => handleDelete(mag)}
-                          disabled={deletingId === mag.id}
-                          className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                          title="Excluir Revista e Lições"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {role !== 'secretary' && (
+                          <button
+                            onClick={() => handleDelete(mag)}
+                            disabled={deletingId === mag.id}
+                            className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Excluir Revista e Lições"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

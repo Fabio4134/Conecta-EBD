@@ -38,6 +38,9 @@ const authenticate = (req: any, res: any, next: any) => {
   }
 };
 
+// Helper for global management privileges (Master and Secretary)
+const isGlobalRole = (role?: string) => role === 'master' || role === 'secretary';
+
 // Auth Routes
 app.post("/api/login", async (req, res) => {
   const { email, password, churchId } = req.body;
@@ -46,8 +49,19 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "Credenciais inválidas" });
   }
 
+  // Determine effective role
+  let effectiveRole = user.role;
+  if (user.role === 'standard' && (
+    user.email?.toLowerCase().startsWith('secretari') ||
+    user.name?.toLowerCase().includes('secretári') ||
+    user.name?.toLowerCase().includes('secretaria') ||
+    user.name?.includes('[Secretaria]')
+  )) {
+    effectiveRole = 'secretary';
+  }
+
   // If standard user, check if church matches
-  if (user.role === 'standard' && user.church_id !== parseInt(churchId)) {
+  if (effectiveRole === 'standard' && churchId && user.church_id !== parseInt(churchId)) {
     return res.status(401).json({ error: "Usuário não pertence a esta igreja" });
   }
 
@@ -61,8 +75,8 @@ app.post("/api/login", async (req, res) => {
     if (church) church_name = church.name;
   }
 
-  const token = jwt.sign({ id: user.id, role: user.role, church_id: user.church_id || churchId }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, role: user.role, church_id: user.church_id || churchId, church_name } });
+  const token = jwt.sign({ id: user.id, role: effectiveRole, church_id: user.church_id || churchId }, JWT_SECRET);
+  res.json({ token, user: { id: user.id, name: user.name.replace(/\s*\[Secretaria\]/gi, '').trim(), role: effectiveRole, church_id: user.church_id || churchId, church_name } });
 });
 
 app.post("/api/change-password", authenticate, async (req: any, res) => {
@@ -73,7 +87,7 @@ app.post("/api/change-password", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
-// User Management
+// User Management (Only Master)
 app.get("/api/users", authenticate, async (req: any, res) => {
   if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
   const { data: users, error } = await supabase.from('users').select('id, name, email, role, authorized, churches(name)');
@@ -81,19 +95,31 @@ app.get("/api/users", authenticate, async (req: any, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   // transform joined data to match old format
-  const formattedUsers = users.map((u: any) => ({
-    ...u,
-    church_name: u.churches?.name
-  }));
+  const formattedUsers = users.map((u: any) => {
+    const isSec = u.email?.toLowerCase().startsWith('secretari') || u.name?.includes('[Secretaria]');
+    return {
+      ...u,
+      name: (u.name || '').replace(/\s*\[Secretaria\]/gi, '').trim(),
+      role: isSec ? 'secretary' : u.role,
+      church_name: u.churches?.name
+    };
+  });
 
   res.json(formattedUsers);
 });
 
 app.put("/api/users/:id", authenticate, async (req: any, res) => {
   if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
-  const { name, email, password, church_id, role, authorized } = req.body;
+  let { name, email, password, church_id, role, authorized } = req.body;
 
-  const updateData: any = { name, email, church_id, role, authorized: authorized ? 1 : 0 };
+  let dbRole = role;
+  let cleanName = (name || '').replace(/\s*\[Secretaria\]/gi, '').trim();
+  if (role === 'secretary') {
+    dbRole = 'standard';
+    cleanName = `${cleanName} [Secretaria]`;
+  }
+
+  const updateData: any = { name: cleanName, email, church_id, role: dbRole, authorized: authorized ? 1 : 0 };
   if (password) {
     updateData.password = bcrypt.hashSync(password, 10);
   }
@@ -105,7 +131,7 @@ app.put("/api/users/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/users/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir usuários." });
   const { error } = await supabase.from('users').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: "Erro ao excluir usuário. Verifique se existem registros vinculados." });
 
@@ -116,7 +142,7 @@ app.delete("/api/users/:id", authenticate, async (req: any, res) => {
 app.patch("/api/students/:id/toggle", authenticate, async (req: any, res) => {
   const { data: student, error } = await supabase.from('students').select('*').eq('id', req.params.id).single();
   if (error || !student) return res.status(404).json({ error: "Not found" });
-  if (req.user.role !== 'master' && student.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role) && student.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   const { error: updateError } = await supabase.from('students').update({ active: student.active ? 0 : 1 }).eq('id', req.params.id);
   if (updateError) return res.status(500).json({ error: updateError.message });
@@ -126,7 +152,7 @@ app.patch("/api/students/:id/toggle", authenticate, async (req: any, res) => {
 app.patch("/api/teachers/:id/toggle", authenticate, async (req: any, res) => {
   const { data: teacher, error } = await supabase.from('teachers').select('*').eq('id', req.params.id).single();
   if (error || !teacher) return res.status(404).json({ error: "Not found" });
-  if (req.user.role !== 'master' && teacher.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role) && teacher.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   const { error: updateError } = await supabase.from('teachers').update({ active: teacher.active ? 0 : 1 }).eq('id', req.params.id);
   if (updateError) return res.status(500).json({ error: updateError.message });
@@ -136,12 +162,7 @@ app.patch("/api/teachers/:id/toggle", authenticate, async (req: any, res) => {
 app.patch("/api/classes/:id/toggle", authenticate, async (req: any, res) => {
   const { data: cls, error } = await supabase.from('classes').select('*').eq('id', req.params.id).single();
   if (error || !cls) return res.status(404).json({ error: "Not found" });
-  if (req.user.role !== 'master' && cls.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
-
-  const { error: updateError } = await supabase.from('classes').update({ active: cls.active ? 0 : 1 }).eq('id', req.params.id);
-  if (updateError) return res.status(500).json({ error: updateError.message });
-  res.json({ success: true });
-});
+  if (!isGlobalRole(req.user.role) && cls.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
 // Sectors
 app.get("/api/sectors", async (req, res) => {
@@ -161,7 +182,7 @@ app.get("/api/sectors", async (req, res) => {
 });
 
 app.post("/api/sectors", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { name, description } = req.body;
   const { error } = await supabase.from('sectors').insert({ name, description });
   if (error) return res.status(500).json({ error: error.message });
@@ -169,7 +190,7 @@ app.post("/api/sectors", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/sectors/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { name, description } = req.body;
   const { error } = await supabase.from('sectors').update({ name, description }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
@@ -177,7 +198,7 @@ app.put("/api/sectors/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/sectors/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir setores." });
   const { data: churches } = await supabase.from('churches').select('id').eq('sector_id', req.params.id);
   if (churches && churches.length > 0) {
     return res.status(400).json({ error: "Não é possível excluir um setor com congregações vinculadas." });
@@ -199,7 +220,7 @@ app.get("/api/churches", async (req: any, res) => {
 });
 
 app.post("/api/churches", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { name, type, pastor, members, sector_id } = req.body;
   const { error } = await supabase.from('churches').insert({ name, type, pastor, members: members || 0, sector_id: sector_id || null });
   if (error) return res.status(500).json({ error: error.message });
@@ -207,7 +228,7 @@ app.post("/api/churches", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/churches/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { name, type, pastor, members, sector_id } = req.body;
   const { error } = await supabase.from('churches').update({ name, type, pastor, members: members || 0, sector_id: sector_id || null }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
@@ -215,7 +236,7 @@ app.put("/api/churches/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/churches/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir congregações." });
   const churchId = req.params.id;
   await supabase.from('attendance').delete().eq('church_id', churchId);
   await supabase.from('teacher_schedule').delete().eq('church_id', churchId);
@@ -338,6 +359,7 @@ app.put("/api/magazines/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/magazines/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir revistas." });
   const { data: lessons } = await supabase.from('lessons').select('id').eq('magazine_id', req.params.id);
   const lessonIds = lessons?.map((l: any) => l.id) || [];
   if (lessonIds.length > 0) {
@@ -353,6 +375,7 @@ app.delete("/api/magazines/:id", authenticate, async (req: any, res) => {
 
 // Importação Completa de Revista + 13 Lições via IA
 app.post("/api/magazines/import-ai", authenticate, async (req: any, res) => {
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { magazine, lessons } = req.body;
   if (!magazine?.title || !magazine?.quarter || !magazine?.year) {
     return res.status(400).json({ error: "Dados da revista incompletos (título, trimestre e ano são obrigatórios)." });
@@ -435,21 +458,41 @@ app.get("/api/lessons", authenticate, async (req, res) => {
 });
 
 app.post("/api/lessons", authenticate, async (req: any, res) => {
-  const { magazine_id, number, title, date, golden_text, suggested_hymns } = req.body;
-  const { error } = await supabase.from('lessons').insert({ magazine_id, number, title, date, golden_text, suggested_hymns });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
+  const { magazine_id, number, title, date, golden_text, practical_truth, biblical_reading, suggested_hymns } = req.body;
+  const { error } = await supabase.from('lessons').insert({
+    magazine_id,
+    number: parseInt(number),
+    title,
+    date: date ? date : null,
+    golden_text,
+    practical_truth,
+    biblical_reading,
+    suggested_hymns
+  });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/lessons/:id", authenticate, async (req: any, res) => {
-  const { magazine_id, number, title, date, golden_text, suggested_hymns } = req.body;
-  const { error } = await supabase.from('lessons').update({ magazine_id, number, title, date, golden_text, suggested_hymns }).eq('id', req.params.id);
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
+  const { magazine_id, number, title, date, golden_text, practical_truth, biblical_reading, suggested_hymns } = req.body;
+  const { error } = await supabase.from('lessons').update({
+    magazine_id,
+    number: parseInt(number),
+    title,
+    date: date ? date : null,
+    golden_text,
+    practical_truth,
+    biblical_reading,
+    suggested_hymns
+  }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.delete("/api/lessons/:id", authenticate, async (req: any, res) => {
-  // if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir lições." });
   const lessonId = req.params.id;
   await supabase.from('attendance').delete().eq('lesson_id', lessonId);
   await supabase.from('teacher_schedule').delete().eq('lesson_id', lessonId);
@@ -545,20 +588,35 @@ app.post("/api/public/classes/:id/register", async (req, res) => {
 app.get("/api/students", authenticate, async (req: any, res) => {
   let query = supabase.from('students').select('*, churches(id, name, sector_id, sectors(id, name)), classes(name)');
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
   const { data: students, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
 
-  const formattedStudents = students.map((s: any) => ({
-    ...s,
-    church_name: s.churches?.name,
-    sector_id: s.churches?.sector_id,
-    sector_name: s.churches?.sectors?.name,
-    class_name: s.classes?.name
-  }));
+  const formattedStudents = students.map((s: any) => {
+    let cleanName = (s.name || '').trim();
+    let cleanPhone = (s.phone || '').trim();
+
+    const phoneMatch = cleanName.match(/\s*\(([^)]+)\)$/);
+    if (phoneMatch) {
+      cleanName = cleanName.replace(/\s*\([^)]+\)$/, '').trim();
+      if (!cleanPhone) {
+        cleanPhone = phoneMatch[1].trim();
+      }
+    }
+
+    return {
+      ...s,
+      name: cleanName,
+      phone: cleanPhone,
+      church_name: s.churches?.name,
+      sector_id: s.churches?.sector_id,
+      sector_name: s.churches?.sectors?.name,
+      class_name: s.classes?.name
+    };
+  });
 
   res.json(formattedStudents);
 });
@@ -569,16 +627,19 @@ app.post("/api/students", authenticate, async (req: any, res) => {
   if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
 
   let church_id = req.user.church_id;
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     church_id = parseInt(customChurchId);
   } else if (!church_id && class_id) {
     const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
     if (cls?.church_id) church_id = cls.church_id;
   }
 
+  const cleanName = (name || '').replace(/\s*\([^)]+\)$/, '').trim();
+  const cleanPhone = (phone || '').trim();
+
   let insertPayload: any = {
-    name: name?.trim(),
-    phone: phone?.trim(),
+    name: cleanName,
+    phone: cleanPhone,
     birth_date: birth_date ? birth_date : null,
     church_id,
     class_id
@@ -587,7 +648,7 @@ app.post("/api/students", authenticate, async (req: any, res) => {
   let { error } = await supabase.from('students').insert(insertPayload);
   if (error && error.code === 'PGRST204') {
     delete insertPayload.phone;
-    insertPayload.name = `${name.trim()} (${phone.trim()})`;
+    insertPayload.name = cleanPhone ? `${cleanName} (${cleanPhone})` : cleanName;
     const fallback = await supabase.from('students').insert(insertPayload);
     error = fallback.error;
   }
@@ -600,31 +661,32 @@ app.put("/api/students/:id", authenticate, async (req: any, res) => {
   if (!name || !name.trim()) return res.status(400).json({ error: "Nome é obrigatório." });
   if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
 
+  const cleanName = (name || '').replace(/\s*\([^)]+\)$/, '').trim();
+  const cleanPhone = (phone || '').trim();
+
   let updatePayload: any = {
-    name: name?.trim(),
-    phone: phone?.trim(),
+    name: cleanName,
+    phone: cleanPhone,
     birth_date: birth_date ? birth_date : null,
     class_id
   };
 
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     updatePayload.church_id = parseInt(customChurchId);
   }
 
   let query = supabase.from('students').update(updatePayload).eq('id', req.params.id);
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
   let { error } = await query;
   if (error && error.code === 'PGRST204') {
     delete updatePayload.phone;
-    if (phone?.trim() && !name.includes(phone.trim())) {
-      updatePayload.name = `${name.trim()} (${phone.trim()})`;
-    }
+    updatePayload.name = cleanPhone ? `${cleanName} (${cleanPhone})` : cleanName;
     let fbQuery = supabase.from('students').update(updatePayload).eq('id', req.params.id);
-    if (req.user.role !== 'master') {
+    if (!isGlobalRole(req.user.role)) {
       fbQuery = fbQuery.eq('church_id', req.user.church_id);
     }
     const fallback = await fbQuery;
@@ -635,10 +697,10 @@ app.put("/api/students/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/students/:id", authenticate, async (req: any, res) => {
-  // First verify ownership
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir alunos." });
+
   const { data: student } = await supabase.from('students').select('id, church_id').eq('id', req.params.id).single();
   if (!student) return res.status(404).json({ error: "Aluno não encontrado" });
-  if (req.user.role !== 'master' && student.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   await supabase.from('attendance').delete().eq('student_id', req.params.id);
 
@@ -651,7 +713,7 @@ app.delete("/api/students/:id", authenticate, async (req: any, res) => {
 app.get("/api/teachers", authenticate, async (req: any, res) => {
   let query = supabase.from('teachers').select('*, churches(id, name, sector_id, sectors(id, name)), classes(name)');
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -672,7 +734,7 @@ app.get("/api/teachers", authenticate, async (req: any, res) => {
 app.post("/api/teachers", authenticate, async (req: any, res) => {
   const { name, class_id, church_id: customChurchId } = req.body;
   let church_id = req.user.church_id;
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     church_id = parseInt(customChurchId);
   } else if (!church_id && class_id) {
     const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
@@ -687,13 +749,13 @@ app.post("/api/teachers", authenticate, async (req: any, res) => {
 app.put("/api/teachers/:id", authenticate, async (req: any, res) => {
   const { name, class_id, church_id: customChurchId } = req.body;
   const updateData: any = { name, class_id };
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     updateData.church_id = parseInt(customChurchId);
   }
 
   let query = supabase.from('teachers').update(updateData).eq('id', req.params.id);
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -703,9 +765,10 @@ app.put("/api/teachers/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/teachers/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir professores." });
+
   const { data: teacher } = await supabase.from('teachers').select('id, church_id').eq('id', req.params.id).single();
   if (!teacher) return res.status(404).json({ error: "Professor não encontrado" });
-  if (req.user.role !== 'master' && teacher.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   await supabase.from('teacher_schedule').delete().eq('teacher_id', req.params.id);
 
@@ -718,7 +781,7 @@ app.delete("/api/teachers/:id", authenticate, async (req: any, res) => {
 app.get("/api/classes", authenticate, async (req: any, res) => {
   let query = supabase.from('classes').select('*, churches(id, name, sector_id, sectors(id, name)), magazines(title)');
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -739,7 +802,7 @@ app.get("/api/classes", authenticate, async (req: any, res) => {
 app.post("/api/classes", authenticate, async (req: any, res) => {
   const { name, magazine_id, church_id: customChurchId } = req.body;
   let church_id = req.user.church_id;
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     church_id = parseInt(customChurchId);
   }
 
@@ -751,13 +814,13 @@ app.post("/api/classes", authenticate, async (req: any, res) => {
 app.put("/api/classes/:id", authenticate, async (req: any, res) => {
   const { name, magazine_id, church_id: customChurchId } = req.body;
   const updateData: any = { name, magazine_id };
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     updateData.church_id = parseInt(customChurchId);
   }
 
   let query = supabase.from('classes').update(updateData).eq('id', req.params.id);
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -767,9 +830,10 @@ app.put("/api/classes/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/classes/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir classes." });
+
   const { data: cls } = await supabase.from('classes').select('id, church_id').eq('id', req.params.id).single();
   if (!cls) return res.status(404).json({ error: "Classe não encontrada" });
-  if (req.user.role !== 'master' && cls.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   const { data: students } = await supabase.from('students').select('id').eq('class_id', req.params.id);
   const { data: teachers } = await supabase.from('teachers').select('id').eq('class_id', req.params.id);
@@ -807,14 +871,18 @@ app.get("/api/attendance/check", authenticate, async (req: any, res) => {
 
   const studentIds = students.map((s: any) => s.id);
 
-  const { count, error } = await supabase
+  let checkQuery = supabase
     .from('attendance')
     .select('*', { count: 'exact', head: true })
     .eq('lesson_id', lesson_id)
     .eq('date', date)
-    .eq('church_id', church_id)
     .in('student_id', studentIds);
 
+  if (!isGlobalRole(req.user.role) && church_id) {
+    checkQuery = checkQuery.eq('church_id', church_id);
+  }
+
+  const { count, error } = await checkQuery;
   if (error) return res.status(500).json({ error: error.message });
 
   res.json({ exists: count && count > 0 });
@@ -823,7 +891,7 @@ app.get("/api/attendance/check", authenticate, async (req: any, res) => {
 app.get("/api/attendance", authenticate, async (req: any, res) => {
   let query = supabase.from('attendance').select('*, students(name, class_id), lessons(title), churches(id, name, sector_id, sectors(id, name))');
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -847,12 +915,35 @@ app.post("/api/attendance", authenticate, async (req: any, res) => {
   const church_id = req.user.church_id;
 
   if (req.body.records && Array.isArray(req.body.records)) {
+    const firstRecord = req.body.records[0];
+    if (firstRecord) {
+      const { lesson_id, date } = firstRecord;
+      const studentIds = req.body.records.map((r: any) => r.student_id);
+
+      const { count } = await supabase
+        .from('attendance')
+        .select('*', { count: 'exact', head: true })
+        .eq('lesson_id', lesson_id)
+        .eq('date', date)
+        .in('student_id', studentIds);
+
+      if (count && count > 0) {
+        if (req.user.role === 'secretary') {
+          return res.status(403).json({ error: "Esta chamada já foi finalizada. Secretários não têm permissão para alterar chamadas concluídas." });
+        }
+        // If master is updating, remove prior attendance records for this lesson/date/students
+        if (req.user.role === 'master') {
+          await supabase.from('attendance').delete().eq('lesson_id', lesson_id).eq('date', date).in('student_id', studentIds);
+        }
+      }
+    }
+
     const recordsWithChurch = req.body.records.map((r: any) => ({
       student_id: r.student_id,
       lesson_id: r.lesson_id,
       present: r.present ? true : false,
       date: r.date,
-      church_id
+      church_id: r.church_id || church_id
     }));
     const { error } = await supabase.from('attendance').insert(recordsWithChurch);
     if (error) return res.status(500).json({ error: error.message });
@@ -866,27 +957,17 @@ app.post("/api/attendance", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/attendance/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem alterar chamadas já finalizadas." });
   const { present } = req.body;
   let query = supabase.from('attendance').update({ present: present ? true : false }).eq('id', req.params.id);
-
-  if (req.user.role !== 'master') {
-    query = query.eq('church_id', req.user.church_id);
-  }
-
   const { error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.delete("/api/attendance/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir registros de chamada." });
   let query = supabase.from('attendance').delete().eq('id', req.params.id);
-
-  if (req.user.role !== 'master') {
-    query = query.eq('church_id', req.user.church_id);
-  }
-
   const { error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
@@ -896,7 +977,7 @@ app.delete("/api/attendance/:id", authenticate, async (req: any, res) => {
 app.get("/api/materials", authenticate, async (req: any, res) => {
   let query = supabase.from('materials').select('*, churches(name)');
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -912,7 +993,7 @@ app.get("/api/materials", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/materials", authenticate, upload.fields([{ name: 'file', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { title } = req.body;
   const church_id = req.user.church_id;
 
@@ -955,10 +1036,9 @@ app.post("/api/materials", authenticate, upload.fields([{ name: 'file', maxCount
 });
 
 app.delete("/api/materials/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir materiais." });
   const { data: material, error } = await supabase.from('materials').select('*').eq('id', req.params.id).single();
   if (error || !material) return res.status(404).json({ error: "Not found" });
-  if (req.user.role !== 'master' && material.church_id !== req.user.church_id) return res.status(403).json({ error: "Forbidden" });
 
   try {
     // Delete from Supabase Storage
@@ -990,7 +1070,7 @@ app.delete("/api/materials/:id", authenticate, async (req: any, res) => {
 
 // Suggestions
 app.get("/api/suggestions", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
 
   const { data: suggestions, error } = await supabase
     .from('suggestions')
@@ -1019,7 +1099,7 @@ app.post("/api/suggestions", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/suggestions/:id", authenticate, async (req: any, res) => {
-  if (req.user.role !== 'master') return res.status(403).json({ error: "Forbidden" });
+  if (!isGlobalRole(req.user.role)) return res.status(403).json({ error: "Forbidden" });
   const { answer } = req.body;
 
   const { error } = await supabase.from('suggestions').update({ answer, status: 'answered' }).eq('id', req.params.id);
@@ -1034,7 +1114,7 @@ app.get("/api/schedule", authenticate, async (req: any, res) => {
     .select('*, teachers(name), classes(name), lessons(title), churches(id, name, sector_id, sectors(id, name))')
     .order('date', { ascending: true });
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -1057,7 +1137,7 @@ app.get("/api/schedule", authenticate, async (req: any, res) => {
 app.post("/api/schedule", authenticate, async (req: any, res) => {
   const { teacher_id, class_id, lesson_id, date, church_id: customChurchId } = req.body;
   let church_id = req.user.church_id;
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     church_id = parseInt(customChurchId);
   } else if (!church_id && class_id) {
     const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
@@ -1072,13 +1152,13 @@ app.post("/api/schedule", authenticate, async (req: any, res) => {
 app.put("/api/schedule/:id", authenticate, async (req: any, res) => {
   const { teacher_id, class_id, lesson_id, date, church_id: customChurchId } = req.body;
   const updateData: any = { teacher_id, class_id, lesson_id, date };
-  if (req.user.role === 'master' && customChurchId) {
+  if (isGlobalRole(req.user.role) && customChurchId) {
     updateData.church_id = parseInt(customChurchId);
   }
 
   let query = supabase.from('teacher_schedule').update(updateData).eq('id', req.params.id);
 
-  if (req.user.role !== 'master') {
+  if (!isGlobalRole(req.user.role)) {
     query = query.eq('church_id', req.user.church_id);
   }
 
@@ -1088,11 +1168,8 @@ app.put("/api/schedule/:id", authenticate, async (req: any, res) => {
 });
 
 app.delete("/api/schedule/:id", authenticate, async (req: any, res) => {
+  if (req.user.role !== 'master') return res.status(403).json({ error: "Apenas usuários Master podem excluir escalas." });
   let query = supabase.from('teacher_schedule').delete().eq('id', req.params.id);
-
-  if (req.user.role !== 'master') {
-    query = query.eq('church_id', req.user.church_id);
-  }
 
   const { error } = await query;
   if (error) return res.status(500).json({ error: error.message });

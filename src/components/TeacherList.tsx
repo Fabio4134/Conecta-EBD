@@ -11,6 +11,7 @@ import autoTable from 'jspdf-autotable';
 import Pagination from './Pagination.js';
 
 export default function TeacherList({ role }: { role: string }) {
+  const isMasterOrSec = role === 'master' || role === 'secretary';
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -33,8 +34,8 @@ export default function TeacherList({ role }: { role: string }) {
     const [tRes, cRes, sRes, chuRes] = await Promise.all([
       api.get('/teachers'),
       api.get('/classes'),
-      role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-      role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      isMasterOrSec ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      isMasterOrSec ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
     setTeachers(tRes.data || []);
     setClasses(cRes.data || []);
@@ -49,7 +50,7 @@ export default function TeacherList({ role }: { role: string }) {
         name: formData.name.trim(),
         class_id: formData.class_id ? parseInt(formData.class_id) : null
       };
-      if (role === 'master' && formData.church_id) {
+      if (isMasterOrSec && formData.church_id) {
         payload.church_id = parseInt(formData.church_id);
       }
 
@@ -79,6 +80,9 @@ export default function TeacherList({ role }: { role: string }) {
   };
 
   const handleDelete = async (id: number) => {
+    if (role === 'secretary') {
+      return alert('Secretários não possuem permissão para excluir registros.');
+    }
     if (confirm('Deseja realmente excluir este professor?')) {
       try {
         await api.delete(`/teachers/${id}`);
@@ -226,7 +230,7 @@ export default function TeacherList({ role }: { role: string }) {
             />
           </div>
 
-          {role === 'master' && sectors.length > 0 && (
+          {isMasterOrSec && sectors.length > 0 && (
             <select
               className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterSector}
@@ -244,7 +248,7 @@ export default function TeacherList({ role }: { role: string }) {
             </select>
           )}
 
-          {role === 'master' && availableChurches.length > 0 && (
+          {isMasterOrSec && availableChurches.length > 0 && (
             <select
               className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterChurch}
@@ -272,7 +276,7 @@ export default function TeacherList({ role }: { role: string }) {
             <option value="">Todas as Classes</option>
             {availableClasses.map(c => (
               <option key={c.id} value={c.id.toString()}>
-                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+                {c.name}{isMasterOrSec && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
               </option>
             ))}
           </select>
@@ -284,7 +288,7 @@ export default function TeacherList({ role }: { role: string }) {
               <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
                 <th className="px-6 py-4">Nome</th>
                 <th className="px-6 py-4">Classe Designada</th>
-                {role === 'master' && <th className="px-6 py-4">Igreja</th>}
+                {isMasterOrSec && <th className="px-6 py-4">Igreja</th>}
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
@@ -303,7 +307,7 @@ export default function TeacherList({ role }: { role: string }) {
                   <td className="px-6 py-4">
                     <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg font-bold uppercase tracking-widest">{teacher.class_name}</span>
                   </td>
-                  {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{teacher.church_name}</td>}
+                  {isMasterOrSec && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{teacher.church_name}</td>}
                   <td className="px-6 py-4">
                     <span className={`text-[10px] px-2 py-1 rounded-lg font-bold uppercase tracking-widest ${teacher.active ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
                       }`}>
@@ -318,16 +322,18 @@ export default function TeacherList({ role }: { role: string }) {
                       <button onClick={() => handleEdit(teacher)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg">
                         <Edit2 size={16} />
                       </button>
-                      <button onClick={() => handleDelete(teacher.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash2 size={16} />
-                      </button>
+                      {role !== 'secretary' && (
+                        <button onClick={() => handleDelete(teacher.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={role === 'master' ? 5 : 4} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                  <td colSpan={isMasterOrSec ? 5 : 4} className="px-6 py-12 text-center text-neutral-400 text-sm">
                     Nenhum professor encontrado.
                   </td>
                 </tr>
@@ -381,7 +387,7 @@ export default function TeacherList({ role }: { role: string }) {
                   placeholder="Ex: João da Silva"
                 />
               </div>
-              {role === 'master' && (
+              {isMasterOrSec && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
@@ -405,7 +411,7 @@ export default function TeacherList({ role }: { role: string }) {
                       Congregação / Igreja *
                     </label>
                     <select
-                      required={role === 'master'}
+                      required={isMasterOrSec}
                       className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
                       value={formData.church_id}
                       onChange={(e) => {
@@ -440,14 +446,14 @@ export default function TeacherList({ role }: { role: string }) {
                   onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                 >
                   <option value="">Selecione a classe</option>
-                  {(role === 'master' && formData.church_id
+                  {(isMasterOrSec && formData.church_id
                     ? classes.filter(c => c.church_id?.toString() === formData.church_id || c.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
-                    : role === 'master' && formData.sector_id
+                    : isMasterOrSec && formData.sector_id
                     ? classes.filter(c => c.sector_id?.toString() === formData.sector_id)
                     : classes
                   ).map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name}{role === 'master' && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
+                      {c.name}{isMasterOrSec && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
                     </option>
                   ))}
                 </select>

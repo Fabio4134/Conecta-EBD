@@ -9,6 +9,7 @@ import { formatDate } from '../utils.js';
 import Pagination from './Pagination.js';
 
 export default function StudentList({ role }: { role: string }) {
+  const isMasterOrSec = role === 'master' || role === 'secretary';
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
@@ -31,8 +32,8 @@ export default function StudentList({ role }: { role: string }) {
     const [sRes, cRes, secRes, chuRes] = await Promise.all([
       api.get('/students'),
       api.get('/classes'),
-      role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-      role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      isMasterOrSec ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      isMasterOrSec ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
     setStudents(sRes.data || []);
     setClasses(cRes.data || []);
@@ -42,9 +43,14 @@ export default function StudentList({ role }: { role: string }) {
 
   const handleEdit = (student: Student) => {
     setEditingId(student.id);
+    const rawName = student.name || '';
+    const phoneMatch = rawName.match(/\s*\(([^)]+)\)$/);
+    const cleanName = phoneMatch ? rawName.replace(/\s*\([^)]+\)$/, '').trim() : rawName.trim();
+    const cleanPhone = student.phone || (phoneMatch ? phoneMatch[1].trim() : '');
+
     setFormData({
-      name: student.name,
-      phone: student.phone || '',
+      name: cleanName,
+      phone: cleanPhone,
       birth_date: student.birth_date || '',
       class_id: student.class_id ? student.class_id.toString() : '',
       church_id: student.church_id ? student.church_id.toString() : '',
@@ -65,7 +71,7 @@ export default function StudentList({ role }: { role: string }) {
         birth_date: formData.birth_date ? formData.birth_date : null,
         class_id: formData.class_id ? parseInt(formData.class_id) : null
       };
-      if (role === 'master' && formData.church_id) {
+      if (isMasterOrSec && formData.church_id) {
         payload.church_id = parseInt(formData.church_id);
       }
       if (editingId) {
@@ -83,6 +89,9 @@ export default function StudentList({ role }: { role: string }) {
   };
 
   const handleDelete = async (id: number) => {
+    if (role === 'secretary') {
+      return alert('Secretários não possuem permissão para excluir registros.');
+    }
     if (confirm('Deseja realmente excluir este aluno?')) {
       try {
         await api.delete(`/students/${id}`);
@@ -239,7 +248,7 @@ export default function StudentList({ role }: { role: string }) {
             />
           </div>
 
-          {role === 'master' && sectors.length > 0 && (
+          {isMasterOrSec && sectors.length > 0 && (
             <select
               className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterSector}
@@ -257,7 +266,7 @@ export default function StudentList({ role }: { role: string }) {
             </select>
           )}
 
-          {role === 'master' && availableChurches.length > 0 && (
+          {isMasterOrSec && availableChurches.length > 0 && (
             <select
               className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
               value={filterChurch}
@@ -285,7 +294,7 @@ export default function StudentList({ role }: { role: string }) {
             <option value="">Todas as Classes</option>
             {availableClasses.map(c => (
               <option key={c.id} value={c.id.toString()}>
-                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+                {c.name}{isMasterOrSec && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
               </option>
             ))}
           </select>
@@ -298,7 +307,7 @@ export default function StudentList({ role }: { role: string }) {
                 <th className="px-6 py-4">Nome</th>
                 <th className="px-6 py-4">Telefone / WhatsApp</th>
                 <th className="px-6 py-4">Classe</th>
-                {role === 'master' && <th className="px-6 py-4">Igreja</th>}
+                {isMasterOrSec && <th className="px-6 py-4">Igreja</th>}
                 <th className="px-6 py-4">Nascimento</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Ações</th>
@@ -313,11 +322,11 @@ export default function StudentList({ role }: { role: string }) {
                   <td className="px-6 py-4">
                     {student.phone ? (
                       <a
-                        href={`https://wa.me/55${student.phone.replace(/\D/g, '')}`}
+                        href={`https://wa.me/55${student.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`A Paz do Senhor, ${student.name}! Sentimos sua falta na Escola Bíblica Dominical (Classe: ${student.class_name || 'EBD'}). Esperamos por você no próximo domingo! 🙏📖`)}`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60 rounded-lg text-xs font-semibold transition-colors"
-                        title="Abrir WhatsApp"
+                        title="Enviar mensagem WhatsApp"
                       >
                         <MessageCircle size={13} className="text-emerald-600" />
                         {student.phone}
@@ -329,7 +338,7 @@ export default function StudentList({ role }: { role: string }) {
                   <td className="px-6 py-4">
                     <span className="text-xs px-2.5 py-1 bg-neutral-100 text-neutral-600 rounded-lg font-medium">{student.class_name || 'Sem classe'}</span>
                   </td>
-                  {role === 'master' && (
+                  {isMasterOrSec && (
                     <td className="px-6 py-4 text-xs text-neutral-500 font-mono italic">{student.church_name}</td>
                   )}
                   <td className="px-6 py-4 text-sm text-neutral-500">{formatDate(student.birth_date)}</td>
@@ -347,16 +356,18 @@ export default function StudentList({ role }: { role: string }) {
                       <button onClick={() => handleEdit(student)} className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Editar Aluno">
                         <Edit2 size={16} />
                       </button>
-                      <button onClick={() => handleDelete(student.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Excluir Aluno">
-                        <Trash2 size={16} />
-                      </button>
+                      {role !== 'secretary' && (
+                        <button onClick={() => handleDelete(student.id)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Excluir Aluno">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
               {filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={role === 'master' ? 7 : 6} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                  <td colSpan={isMasterOrSec ? 7 : 6} className="px-6 py-12 text-center text-neutral-400 text-sm">
                     Nenhum aluno encontrado.
                   </td>
                 </tr>
@@ -433,7 +444,7 @@ export default function StudentList({ role }: { role: string }) {
                 />
               </div>
 
-              {role === 'master' && (
+              {isMasterOrSec && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
@@ -457,7 +468,7 @@ export default function StudentList({ role }: { role: string }) {
                       Congregação / Igreja *
                     </label>
                     <select
-                      required={role === 'master'}
+                      required={isMasterOrSec}
                       className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
                       value={formData.church_id}
                       onChange={(e) => {
@@ -490,14 +501,14 @@ export default function StudentList({ role }: { role: string }) {
                   onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                 >
                   <option value="">Selecione a classe</option>
-                  {(role === 'master' && formData.church_id
+                  {(isMasterOrSec && formData.church_id
                     ? classes.filter(c => c.church_id?.toString() === formData.church_id || c.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
-                    : role === 'master' && formData.sector_id
+                    : isMasterOrSec && formData.sector_id
                     ? classes.filter(c => c.sector_id?.toString() === formData.sector_id)
                     : classes
                   ).map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name}{role === 'master' && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
+                      {c.name}{isMasterOrSec && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
                     </option>
                   ))}
                 </select>

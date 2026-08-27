@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { formatDate } from '../utils';
 
 export default function TeacherSchedule({ role }: { role: string }) {
+  const isMasterOrSec = role === 'master' || role === 'secretary';
   const [schedule, setSchedule] = useState<ScheduleRecord[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -47,8 +48,8 @@ export default function TeacherSchedule({ role }: { role: string }) {
       api.get('/classes'),
       api.get('/lessons'),
       api.get('/magazines').catch(() => ({ data: [] })),
-      role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-      role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      isMasterOrSec ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      isMasterOrSec ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
     const sortedSchedule = (sRes.data || []).sort((a: ScheduleRecord, b: ScheduleRecord) =>
       (a.date || '').localeCompare(b.date || '')
@@ -74,7 +75,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
         lesson_id: formData.lesson_id ? parseInt(formData.lesson_id) : null,
         date: formData.date
       };
-      if (role === 'master' && formData.church_id) {
+      if (isMasterOrSec && formData.church_id) {
         payload.church_id = parseInt(formData.church_id);
       }
 
@@ -98,13 +99,6 @@ export default function TeacherSchedule({ role }: { role: string }) {
     const currentLesson = lessons.find(l => l.id === item.lesson_id);
     if (currentLesson?.magazine_id) {
       setSelectedMagazine(currentLesson.magazine_id.toString());
-    } else {
-      const cls = classes.find(c => c.id === item.class_id);
-      if (cls?.magazine_id) {
-        setSelectedMagazine(cls.magazine_id.toString());
-      } else {
-        setSelectedMagazine('');
-      }
     }
     setFormData({
       teacher_id: item.teacher_id.toString(),
@@ -118,6 +112,9 @@ export default function TeacherSchedule({ role }: { role: string }) {
   };
 
   const handleDelete = async (id: number) => {
+    if (role === 'secretary') {
+      return alert('Secretários não possuem permissão para excluir registros.');
+    }
     if (confirm('Deseja realmente excluir esta escala?')) {
       try {
         await api.delete(`/schedule/${id}`);
@@ -281,7 +278,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
 
       {/* Barra de Filtros */}
       <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-white/80 shadow-sm flex flex-col sm:flex-row items-center gap-3 flex-wrap">
-        {role === 'master' && sectors.length > 0 && (
+        {isMasterOrSec && sectors.length > 0 && (
           <div className="w-full sm:w-48">
             <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Setor</label>
             <select
@@ -301,7 +298,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
           </div>
         )}
 
-        {role === 'master' && availableChurches.length > 0 && (
+        {isMasterOrSec && availableChurches.length > 0 && (
           <div className="w-full sm:w-56">
             <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Congregação</label>
             <select
@@ -330,7 +327,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
             <option value="">Todas as Classes ({filteredSchedule.length} escalas)</option>
             {availableClasses.map(c => (
               <option key={c.id} value={c.id.toString()}>
-                {c.name}{role === 'master' && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
+                {c.name}{isMasterOrSec && !filterChurch && c.church_name ? ` (${c.church_name})` : ''}
               </option>
             ))}
           </select>
@@ -448,7 +445,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
                             <th className="px-6 py-3.5">Data</th>
                             <th className="px-6 py-3.5">Professor Responsável</th>
                             <th className="px-6 py-3.5">Lição Programada</th>
-                            {role === 'master' && <th className="px-6 py-3.5">Igreja</th>}
+                            {isMasterOrSec && <th className="px-6 py-3.5">Igreja</th>}
                             <th className="px-6 py-3.5 text-right">Ações</th>
                           </tr>
                         </thead>
@@ -467,7 +464,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
                               <td className="px-6 py-4 text-sm text-neutral-600 italic">
                                 {item.lesson_title}
                               </td>
-                              {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{item.church_name}</td>}
+                              {isMasterOrSec && <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{item.church_name}</td>}
                               <td className="px-6 py-4 text-right">
                                 <div className="flex justify-end gap-1.5">
                                   <button
@@ -477,13 +474,15 @@ export default function TeacherSchedule({ role }: { role: string }) {
                                   >
                                     <Edit2 size={16} />
                                   </button>
-                                  <button
-                                    onClick={() => handleDelete(item.id)}
-                                    className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Excluir Escala"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                                  {role !== 'secretary' && (
+                                    <button
+                                      onClick={() => handleDelete(item.id)}
+                                      className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Excluir Escala"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -521,7 +520,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {role === 'master' && (
+              {isMasterOrSec && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                   <div>
                     <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
@@ -545,7 +544,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
                       Congregação / Igreja *
                     </label>
                     <select
-                      required={role === 'master'}
+                      required={isMasterOrSec}
                       className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
                       value={formData.church_id}
                       onChange={(e) => {
@@ -579,14 +578,14 @@ export default function TeacherSchedule({ role }: { role: string }) {
                   onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
                 >
                   <option value="">Selecione o professor</option>
-                  {(role === 'master' && formData.church_id
+                  {(isMasterOrSec && formData.church_id
                     ? teachers.filter(t => t.church_id?.toString() === formData.church_id || t.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
-                    : role === 'master' && formData.sector_id
+                    : isMasterOrSec && formData.sector_id
                     ? teachers.filter(t => t.sector_id?.toString() === formData.sector_id)
                     : teachers
                   ).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })).map(t => (
                     <option key={t.id} value={t.id}>
-                      {t.name}{role === 'master' && !formData.church_id && t.church_name ? ` (${t.church_name})` : ''}
+                      {t.name}{isMasterOrSec && !formData.church_id && t.church_name ? ` (${t.church_name})` : ''}
                     </option>
                   ))}
                 </select>
@@ -608,14 +607,14 @@ export default function TeacherSchedule({ role }: { role: string }) {
                   }}
                 >
                   <option value="">Selecione a classe</option>
-                  {(role === 'master' && formData.church_id
+                  {(isMasterOrSec && formData.church_id
                     ? classes.filter(c => c.church_id?.toString() === formData.church_id || c.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
-                    : role === 'master' && formData.sector_id
+                    : isMasterOrSec && formData.sector_id
                     ? classes.filter(c => c.sector_id?.toString() === formData.sector_id)
                     : classes
                   ).map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.name}{role === 'master' && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
+                      {c.name}{isMasterOrSec && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
                     </option>
                   ))}
                 </select>
