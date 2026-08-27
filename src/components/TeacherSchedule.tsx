@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { ScheduleRecord, Teacher, Class, Lesson, Sector, Church } from '../types';
+import { ScheduleRecord, Teacher, Class, Lesson, Sector, Church, Magazine } from '../types';
 import {
   Calendar, Download, Search, Plus, Edit2, Trash2, X,
   ChevronDown, ChevronUp, Users, BookOpen, Clock, Layers
@@ -15,10 +15,12 @@ export default function TeacherSchedule({ role }: { role: string }) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [magazines, setMagazines] = useState<Magazine[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedMagazine, setSelectedMagazine] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [filterChurch, setFilterChurch] = useState('');
   const [filterClass, setFilterClass] = useState('');
@@ -29,7 +31,9 @@ export default function TeacherSchedule({ role }: { role: string }) {
     teacher_id: '',
     class_id: '',
     lesson_id: '',
-    date: ''
+    date: '',
+    church_id: '',
+    sector_id: ''
   });
 
   useEffect(() => {
@@ -37,11 +41,12 @@ export default function TeacherSchedule({ role }: { role: string }) {
   }, []);
 
   const fetchData = async () => {
-    const [sRes, tRes, cRes, lRes, secRes, chuRes] = await Promise.all([
+    const [sRes, tRes, cRes, lRes, mRes, secRes, chuRes] = await Promise.all([
       api.get('/schedule'),
       api.get('/teachers'),
       api.get('/classes'),
       api.get('/lessons'),
+      api.get('/magazines').catch(() => ({ data: [] })),
       role === 'master' ? api.get('/sectors').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
       role === 'master' ? api.get('/churches').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
     ]);
@@ -55,6 +60,7 @@ export default function TeacherSchedule({ role }: { role: string }) {
     setTeachers(sortedT);
     setClasses(cRes.data || []);
     setLessons(lRes.data || []);
+    setMagazines(mRes.data || []);
     setSectors(secRes.data || []);
     setChurches(chuRes.data || []);
   };
@@ -62,14 +68,25 @@ export default function TeacherSchedule({ role }: { role: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload: any = {
+        teacher_id: formData.teacher_id ? parseInt(formData.teacher_id) : null,
+        class_id: formData.class_id ? parseInt(formData.class_id) : null,
+        lesson_id: formData.lesson_id ? parseInt(formData.lesson_id) : null,
+        date: formData.date
+      };
+      if (role === 'master' && formData.church_id) {
+        payload.church_id = parseInt(formData.church_id);
+      }
+
       if (editingId) {
-        await api.put(`/schedule/${editingId}`, formData);
+        await api.put(`/schedule/${editingId}`, payload);
       } else {
-        await api.post('/schedule', formData);
+        await api.post('/schedule', payload);
       }
       setShowModal(false);
       setEditingId(null);
-      setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '' });
+      setSelectedMagazine('');
+      setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '', church_id: '', sector_id: '' });
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao salvar escala');
@@ -78,11 +95,24 @@ export default function TeacherSchedule({ role }: { role: string }) {
 
   const handleEdit = (item: ScheduleRecord) => {
     setEditingId(item.id);
+    const currentLesson = lessons.find(l => l.id === item.lesson_id);
+    if (currentLesson?.magazine_id) {
+      setSelectedMagazine(currentLesson.magazine_id.toString());
+    } else {
+      const cls = classes.find(c => c.id === item.class_id);
+      if (cls?.magazine_id) {
+        setSelectedMagazine(cls.magazine_id.toString());
+      } else {
+        setSelectedMagazine('');
+      }
+    }
     setFormData({
       teacher_id: item.teacher_id.toString(),
       class_id: item.class_id.toString(),
       lesson_id: item.lesson_id.toString(),
-      date: item.date
+      date: item.date,
+      church_id: item.church_id ? item.church_id.toString() : '',
+      sector_id: item.sector_id ? item.sector_id.toString() : ''
     });
     setShowModal(true);
   };
@@ -227,7 +257,12 @@ export default function TeacherSchedule({ role }: { role: string }) {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => { setShowModal(true); setEditingId(null); setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '' }); }}
+            onClick={() => {
+              setShowModal(true);
+              setEditingId(null);
+              setSelectedMagazine('');
+              setFormData({ teacher_id: '', class_id: '', lesson_id: '', date: '' });
+            }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 font-semibold text-sm"
           >
             <Plus size={18} />
@@ -486,36 +521,172 @@ export default function TeacherSchedule({ role }: { role: string }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {role === 'master' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                      Setor
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                      value={formData.sector_id}
+                      onChange={(e) => {
+                        const secId = e.target.value;
+                        setFormData({ ...formData, sector_id: secId, church_id: '', teacher_id: '', class_id: '' });
+                      }}
+                    >
+                      <option value="">Todos os setores</option>
+                      {sectors.map(s => <option key={s.id} value={s.id.toString()}>{s.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                      Congregação / Igreja *
+                    </label>
+                    <select
+                      required={role === 'master'}
+                      className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                      value={formData.church_id}
+                      onChange={(e) => {
+                        const chuId = e.target.value;
+                        const selectedChu = churches.find(c => c.id.toString() === chuId);
+                        setFormData({
+                          ...formData,
+                          church_id: chuId,
+                          sector_id: selectedChu?.sector_id?.toString() || formData.sector_id,
+                          teacher_id: '',
+                          class_id: ''
+                        });
+                      }}
+                    >
+                      <option value="">Selecione a congregação</option>
+                      {(formData.sector_id
+                        ? churches.filter(c => c.sector_id?.toString() === formData.sector_id)
+                        : churches
+                      ).map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Professor</label>
-                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.teacher_id} onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}>
+                <select
+                  required
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-emerald-500"
+                  value={formData.teacher_id}
+                  onChange={(e) => setFormData({ ...formData, teacher_id: e.target.value })}
+                >
                   <option value="">Selecione o professor</option>
-                  {[...teachers].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })).map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                  {(role === 'master' && formData.church_id
+                    ? teachers.filter(t => t.church_id?.toString() === formData.church_id || t.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
+                    : role === 'master' && formData.sector_id
+                    ? teachers.filter(t => t.sector_id?.toString() === formData.sector_id)
+                    : teachers
+                  ).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })).map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}{role === 'master' && !formData.church_id && t.church_name ? ` (${t.church_name})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Classe</label>
-                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.class_id} onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}>
+                <select
+                  required
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-emerald-500"
+                  value={formData.class_id}
+                  onChange={(e) => {
+                    const newClassId = e.target.value;
+                    const cls = classes.find(c => c.id === parseInt(newClassId));
+                    if (cls && cls.magazine_id) {
+                      setSelectedMagazine(cls.magazine_id.toString());
+                    }
+                    setFormData({ ...formData, class_id: newClassId });
+                  }}
+                >
                   <option value="">Selecione a classe</option>
-                  {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {(role === 'master' && formData.church_id
+                    ? classes.filter(c => c.church_id?.toString() === formData.church_id || c.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
+                    : role === 'master' && formData.sector_id
+                    ? classes.filter(c => c.sector_id?.toString() === formData.sector_id)
+                    : classes
+                  ).map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{role === 'master' && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Revista</label>
+                <select
+                  required
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-emerald-500"
+                  value={selectedMagazine}
+                  onChange={(e) => {
+                    setSelectedMagazine(e.target.value);
+                    setFormData({ ...formData, lesson_id: '' });
+                  }}
+                >
+                  <option value="">Selecione a revista</option>
+                  {magazines.filter(m => m.active !== false).map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.title} {m.year && m.quarter ? `(${m.quarter} / ${m.year})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Lição</label>
-                <select required className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.lesson_id} onChange={(e) => setFormData({ ...formData, lesson_id: e.target.value })}>
-                  <option value="">Selecione a lição</option>
-                  {lessons.map(l => <option key={l.id} value={l.id}>{l.number}. {l.title}</option>)}
+                <select
+                  required
+                  disabled={!selectedMagazine}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:bg-neutral-100"
+                  value={formData.lesson_id}
+                  onChange={(e) => setFormData({ ...formData, lesson_id: e.target.value })}
+                >
+                  <option value="">
+                    {selectedMagazine ? "Selecione a lição" : "Selecione uma revista primeiro"}
+                  </option>
+                  {lessons
+                    .filter(l => selectedMagazine ? l.magazine_id === parseInt(selectedMagazine) : false)
+                    .sort((a, b) => (a.number || 0) - (b.number || 0))
+                    .map(l => (
+                      <option key={l.id} value={l.id}>{l.number}. {l.title}</option>
+                    ))}
                 </select>
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Data</label>
-                <input required type="date" className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                <input
+                  required
+                  type="date"
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl outline-none text-sm focus:ring-2 focus:ring-emerald-500"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
+
               <div className="flex gap-3 pt-3">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-neutral-200 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-all font-semibold text-sm">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all">Salvar</button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-3 border border-neutral-200 text-neutral-700 rounded-xl hover:bg-neutral-50 transition-all font-semibold text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-500/20 transition-all"
+                >
+                  Salvar
+                </button>
               </div>
             </form>
           </motion.div>

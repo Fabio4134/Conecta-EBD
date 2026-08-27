@@ -128,7 +128,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="px-3.5 py-3 sm:px-6 md:p-10 max-w-7xl mx-auto relative z-10 w-full">
+        <div className="px-3.5 py-4 sm:px-6 md:p-10 pb-28 sm:pb-32 md:pb-36 max-w-7xl mx-auto relative z-10 w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMenu}

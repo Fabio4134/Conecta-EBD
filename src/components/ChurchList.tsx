@@ -3,12 +3,15 @@ import api from '../api';
 import { Church, Sector } from '../types';
 import { Plus, Trash2, Search, Edit2, Church as ChurchIcon, Users, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
+import Pagination from './Pagination.js';
 
 export default function ChurchList({ role, churchId }: { role: string; churchId?: number }) {
     const [churches, setChurches] = useState<Church[]>([]);
     const [sectors, setSectors] = useState<Sector[]>([]);
     const [search, setSearch] = useState('');
     const [filterSector, setFilterSector] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({ name: '', type: '', pastor: '', members: '', sector_id: '' });
@@ -81,6 +84,9 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
         return matchSearch && matchSector;
     });
 
+    const isAll = pageSize >= filtered.length || pageSize >= 9999;
+    const paginatedChurches = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -113,7 +119,10 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                                 placeholder="Buscar por nome, tipo ou pastor..."
                                 className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                             />
                         </div>
                         {sectors.length > 0 && (
@@ -121,7 +130,10 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                                 <MapPin size={14} className="text-neutral-400" />
                                 <select
                                     value={filterSector}
-                                    onChange={e => setFilterSector(e.target.value)}
+                                    onChange={e => {
+                                        setFilterSector(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
                                     className="text-sm border border-neutral-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
                                 >
                                     <option value="">Todos os setores</option>
@@ -145,7 +157,7 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100">
-                            {filtered.map((church) => (
+                            {paginatedChurches.map((church) => (
                                 <tr key={church.id} className="hover:bg-neutral-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -196,6 +208,15 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
                         </tbody>
                     </table>
                 </div>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalItems={filtered.length}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={setPageSize}
+                    itemName="igrejas"
+                />
             </div>
 
             {showModal && (

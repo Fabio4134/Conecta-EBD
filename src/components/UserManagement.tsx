@@ -3,11 +3,14 @@ import api from '../api';
 import { User, Church } from '../types';
 import { Users, Shield, CheckCircle, XCircle, Trash2, Search, Edit2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import Pagination from './Pagination.js';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
@@ -75,6 +78,9 @@ export default function UserManagement() {
     u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const isAll = pageSize >= filteredUsers.length || pageSize >= 9999;
+  const paginatedUsers = isAll ? filteredUsers : filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -92,7 +98,10 @@ export default function UserManagement() {
             placeholder="Buscar por nome ou email..." 
             className="flex-1 bg-transparent border-none focus:ring-0 text-sm"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
 
@@ -109,7 +118,7 @@ export default function UserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {filteredUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-neutral-50 transition-colors group">
                   <td className="px-6 py-4">
                     <p className="text-sm font-bold text-neutral-800">{user.name}</p>
@@ -146,9 +155,25 @@ export default function UserManagement() {
                   </td>
                 </tr>
               ))}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                    Nenhum usuário encontrado.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredUsers.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="usuários"
+        />
       </div>
 
       {showModal && (

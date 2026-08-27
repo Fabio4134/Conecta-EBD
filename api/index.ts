@@ -271,7 +271,35 @@ app.put("/api/churches/:id/profile", authenticate, async (req: any, res) => {
 app.get("/api/magazines", authenticate, async (req, res) => {
   const { data: magazines, error } = await supabase.from('magazines').select('*').order('year', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-  res.json(magazines);
+
+  const formatted = (magazines || []).map((m: any) => {
+    const isConcluded = m.quarter?.includes('[CONCLUÍDA]') || m.quarter?.includes('[INATIVA]') ||
+                        m.title?.includes('[CONCLUÍDA]') || m.title?.includes('[INATIVA]');
+    return {
+      ...m,
+      quarter: (m.quarter || '').replace(/\s*\[(CONCLUÍDA|INATIVA)\]/gi, '').trim(),
+      active: !isConcluded
+    };
+  });
+
+  res.json(formatted);
+});
+
+app.patch("/api/magazines/:id/toggle", authenticate, async (req: any, res) => {
+  const { data: mag, error } = await supabase.from('magazines').select('*').eq('id', req.params.id).single();
+  if (error || !mag) return res.status(404).json({ error: "Revista não encontrada" });
+
+  const isCurrentlyConcluded = mag.quarter?.includes('[CONCLUÍDA]') || mag.quarter?.includes('[INATIVA]') ||
+                               mag.title?.includes('[CONCLUÍDA]') || mag.title?.includes('[INATIVA]');
+
+  let newQuarter = (mag.quarter || '').replace(/\s*\[(CONCLUÍDA|INATIVA)\]/gi, '').trim();
+  if (!isCurrentlyConcluded) {
+    newQuarter = `${newQuarter} [CONCLUÍDA]`.trim();
+  }
+
+  const { error: updateError } = await supabase.from('magazines').update({ quarter: newQuarter }).eq('id', req.params.id);
+  if (updateError) return res.status(500).json({ error: updateError.message });
+  res.json({ success: true, active: isCurrentlyConcluded });
 });
 
 app.post("/api/magazines", authenticate, async (req: any, res) => {
@@ -290,8 +318,13 @@ app.post("/api/magazines", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/magazines/:id", authenticate, async (req: any, res) => {
-  const { title, quarter, year, category } = req.body;
-  const updatePayload: any = { title, quarter, year: parseInt(year) || new Date().getFullYear() };
+  const { title, quarter, year, category, active } = req.body;
+  let cleanQuarter = (quarter || '').replace(/\s*\[(CONCLUÍDA|INATIVA)\]/gi, '').trim();
+  if (active === false) {
+    cleanQuarter = `${cleanQuarter} [CONCLUÍDA]`.trim();
+  }
+
+  const updatePayload: any = { title, quarter: cleanQuarter, year: parseInt(year) || new Date().getFullYear() };
   if (category !== undefined) updatePayload.category = category;
 
   let { error } = await supabase.from('magazines').update(updatePayload).eq('id', req.params.id);
@@ -531,11 +564,18 @@ app.get("/api/students", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/students", authenticate, async (req: any, res) => {
-  const { name, phone, birth_date, class_id } = req.body;
+  const { name, phone, birth_date, class_id, church_id: customChurchId } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: "Nome é obrigatório." });
   if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
 
-  const church_id = req.user.church_id;
+  let church_id = req.user.church_id;
+  if (req.user.role === 'master' && customChurchId) {
+    church_id = parseInt(customChurchId);
+  } else if (!church_id && class_id) {
+    const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
+    if (cls?.church_id) church_id = cls.church_id;
+  }
+
   let insertPayload: any = {
     name: name?.trim(),
     phone: phone?.trim(),
@@ -556,7 +596,7 @@ app.post("/api/students", authenticate, async (req: any, res) => {
 });
 
 app.put("/api/students/:id", authenticate, async (req: any, res) => {
-  const { name, phone, birth_date, class_id } = req.body;
+  const { name, phone, birth_date, class_id, church_id: customChurchId } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: "Nome é obrigatório." });
   if (!phone || !phone.trim()) return res.status(400).json({ error: "Telefone é obrigatório." });
 
@@ -566,6 +606,10 @@ app.put("/api/students/:id", authenticate, async (req: any, res) => {
     birth_date: birth_date ? birth_date : null,
     class_id
   };
+
+  if (req.user.role === 'master' && customChurchId) {
+    updatePayload.church_id = parseInt(customChurchId);
+  }
 
   let query = supabase.from('students').update(updatePayload).eq('id', req.params.id);
 
@@ -626,16 +670,28 @@ app.get("/api/teachers", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/teachers", authenticate, async (req: any, res) => {
-  const { name, class_id } = req.body;
-  const church_id = req.user.church_id;
+  const { name, class_id, church_id: customChurchId } = req.body;
+  let church_id = req.user.church_id;
+  if (req.user.role === 'master' && customChurchId) {
+    church_id = parseInt(customChurchId);
+  } else if (!church_id && class_id) {
+    const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
+    if (cls?.church_id) church_id = cls.church_id;
+  }
+
   const { error } = await supabase.from('teachers').insert({ name, church_id, class_id });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/teachers/:id", authenticate, async (req: any, res) => {
-  const { name, class_id } = req.body;
-  let query = supabase.from('teachers').update({ name, class_id }).eq('id', req.params.id);
+  const { name, class_id, church_id: customChurchId } = req.body;
+  const updateData: any = { name, class_id };
+  if (req.user.role === 'master' && customChurchId) {
+    updateData.church_id = parseInt(customChurchId);
+  }
+
+  let query = supabase.from('teachers').update(updateData).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -681,16 +737,25 @@ app.get("/api/classes", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/classes", authenticate, async (req: any, res) => {
-  const { name, magazine_id } = req.body;
-  const church_id = req.user.church_id;
+  const { name, magazine_id, church_id: customChurchId } = req.body;
+  let church_id = req.user.church_id;
+  if (req.user.role === 'master' && customChurchId) {
+    church_id = parseInt(customChurchId);
+  }
+
   const { error } = await supabase.from('classes').insert({ name, church_id, magazine_id });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/classes/:id", authenticate, async (req: any, res) => {
-  const { name, magazine_id } = req.body;
-  let query = supabase.from('classes').update({ name, magazine_id }).eq('id', req.params.id);
+  const { name, magazine_id, church_id: customChurchId } = req.body;
+  const updateData: any = { name, magazine_id };
+  if (req.user.role === 'master' && customChurchId) {
+    updateData.church_id = parseInt(customChurchId);
+  }
+
+  let query = supabase.from('classes').update(updateData).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);
@@ -990,16 +1055,28 @@ app.get("/api/schedule", authenticate, async (req: any, res) => {
 });
 
 app.post("/api/schedule", authenticate, async (req: any, res) => {
-  const { teacher_id, class_id, lesson_id, date } = req.body;
-  const church_id = req.user.church_id;
+  const { teacher_id, class_id, lesson_id, date, church_id: customChurchId } = req.body;
+  let church_id = req.user.church_id;
+  if (req.user.role === 'master' && customChurchId) {
+    church_id = parseInt(customChurchId);
+  } else if (!church_id && class_id) {
+    const { data: cls } = await supabase.from('classes').select('church_id').eq('id', class_id).single();
+    if (cls?.church_id) church_id = cls.church_id;
+  }
+
   const { error } = await supabase.from('teacher_schedule').insert({ teacher_id, class_id, lesson_id, church_id, date });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
 });
 
 app.put("/api/schedule/:id", authenticate, async (req: any, res) => {
-  const { teacher_id, class_id, lesson_id, date } = req.body;
-  let query = supabase.from('teacher_schedule').update({ teacher_id, class_id, lesson_id, date }).eq('id', req.params.id);
+  const { teacher_id, class_id, lesson_id, date, church_id: customChurchId } = req.body;
+  const updateData: any = { teacher_id, class_id, lesson_id, date };
+  if (req.user.role === 'master' && customChurchId) {
+    updateData.church_id = parseInt(customChurchId);
+  }
+
+  let query = supabase.from('teacher_schedule').update(updateData).eq('id', req.params.id);
 
   if (req.user.role !== 'master') {
     query = query.eq('church_id', req.user.church_id);

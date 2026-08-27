@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, CheckCircle2, Clock, Inbox } from 'lucide-react';
 import { Suggestion } from '../types';
 import { motion } from 'motion/react';
+import Pagination from './Pagination.js';
 
 interface SuggestionsProps {
     role: 'master' | 'standard';
@@ -15,6 +16,8 @@ export default function Suggestions({ role }: SuggestionsProps) {
     const [success, setSuccess] = useState('');
     const [answeringId, setAnsweringId] = useState<number | null>(null);
     const [answerText, setAnswerText] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     useEffect(() => {
         if (role === 'master') {
@@ -151,6 +154,9 @@ export default function Suggestions({ role }: SuggestionsProps) {
         );
     }
 
+    const isAll = pageSize >= suggestions.length || pageSize >= 9999;
+    const paginatedSuggestions = isAll ? suggestions : suggestions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     // Master View
     return (
         <div className="space-y-6 flex flex-col h-full">
@@ -171,98 +177,111 @@ export default function Suggestions({ role }: SuggestionsProps) {
                         <p className="text-neutral-500">Quando os usuários enviarem sugestões, elas aparecerão aqui.</p>
                     </div>
                 ) : (
-                    suggestions.map((suggestion) => (
-                        <motion.div
-                            layout
-                            key={suggestion.id}
-                            className={`bg-white rounded-xl border p-5 shadow-sm transition-all ${suggestion.status === 'answered' ? 'border-neutral-200/60 bg-neutral-50/50' : 'border-emerald-200 bg-emerald-50/10'
-                                }`}
-                        >
-                            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-start mb-4">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-neutral-900">{suggestion.church_name}</span>
-                                        <span className="text-neutral-300">•</span>
-                                        <span className="text-neutral-600 text-sm">{suggestion.user_name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-neutral-500">
-                                        <Clock size={14} />
-                                        {new Date(suggestion.created_at).toLocaleString('pt-BR')}
-                                    </div>
-                                </div>
-                                <div>
-                                    {suggestion.status === 'answered' ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">
-                                            <CheckCircle2 size={12} />
-                                            Respondida
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-                                            <Clock size={12} />
-                                            Pendente
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="text-neutral-700 bg-white p-4 rounded-lg border border-neutral-100 text-sm leading-relaxed mb-4">
-                                {suggestion.text}
-                            </div>
-
-                            {suggestion.status === 'answered' ? (
-                                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 text-sm">
-                                    <div className="font-medium text-emerald-800 mb-1 flex items-center gap-1.5">
-                                        <CheckCircle2 size={14} /> Sua resposta:
-                                    </div>
-                                    <div className="text-emerald-700">{suggestion.answer}</div>
-                                </div>
-                            ) : (
-                                <div className="mt-4 pt-4 border-t border-neutral-100">
-                                    {answeringId === suggestion.id ? (
-                                        <div className="space-y-3">
-                                            <textarea
-                                                value={answerText}
-                                                onChange={(e) => setAnswerText(e.target.value)}
-                                                placeholder="Digite sua resposta..."
-                                                className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none resize-none min-h-[100px]"
-                                                autoFocus
-                                            />
-                                            <div className="flex gap-2 justify-end">
-                                                <button
-                                                    onClick={() => {
-                                                        setAnsweringId(null);
-                                                        setAnswerText('');
-                                                    }}
-                                                    className="px-3 py-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                                <button
-                                                    onClick={() => handleAnswer(suggestion.id)}
-                                                    disabled={!answerText.trim()}
-                                                    className="px-3 py-1.5 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-1.5"
-                                                >
-                                                    <Send size={14} />
-                                                    Enviar Resposta
-                                                </button>
-                                            </div>
+                    <>
+                        {paginatedSuggestions.map((suggestion) => (
+                            <motion.div
+                                layout
+                                key={suggestion.id}
+                                className={`bg-white rounded-xl border p-5 shadow-sm transition-all ${suggestion.status === 'answered' ? 'border-neutral-200/60 bg-neutral-50/50' : 'border-emerald-200 bg-emerald-50/10'
+                                    }`}
+                            >
+                                <div className="flex flex-col md:flex-row gap-4 justify-between md:items-start mb-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-semibold text-neutral-900">{suggestion.church_name}</span>
+                                            <span className="text-neutral-300">•</span>
+                                            <span className="text-neutral-600 text-sm">{suggestion.user_name}</span>
                                         </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => {
-                                                setAnsweringId(suggestion.id);
-                                                setAnswerText('');
-                                            }}
-                                            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5"
-                                        >
-                                            <MessageSquare size={14} />
-                                            Responder a esta sugestão
-                                        </button>
-                                    )}
+                                        <div className="flex items-center gap-2 text-xs text-neutral-500">
+                                            <Clock size={14} />
+                                            {new Date(suggestion.created_at).toLocaleString('pt-BR')}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {suggestion.status === 'answered' ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                                <CheckCircle2 size={12} />
+                                                Respondida
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+                                                <Clock size={12} />
+                                                Pendente
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </motion.div>
-                    ))
+
+                                <div className="text-neutral-700 bg-white p-4 rounded-lg border border-neutral-100 text-sm leading-relaxed mb-4">
+                                    {suggestion.text}
+                                </div>
+
+                                {suggestion.status === 'answered' ? (
+                                    <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 text-sm">
+                                        <div className="font-medium text-emerald-800 mb-1 flex items-center gap-1.5">
+                                            <CheckCircle2 size={14} /> Sua resposta:
+                                        </div>
+                                        <div className="text-emerald-700">{suggestion.answer}</div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 pt-4 border-t border-neutral-100">
+                                        {answeringId === suggestion.id ? (
+                                            <div className="space-y-3">
+                                                <textarea
+                                                    value={answerText}
+                                                    onChange={(e) => setAnswerText(e.target.value)}
+                                                    placeholder="Digite sua resposta..."
+                                                    className="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 bg-white focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none resize-none min-h-[100px]"
+                                                    autoFocus
+                                                />
+                                                <div className="flex gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => {
+                                                            setAnsweringId(null);
+                                                            setAnswerText('');
+                                                        }}
+                                                        className="px-3 py-1.5 text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleAnswer(suggestion.id)}
+                                                        disabled={!answerText.trim()}
+                                                        className="px-3 py-1.5 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                                                    >
+                                                        <Send size={14} />
+                                                        Enviar Resposta
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setAnsweringId(suggestion.id);
+                                                    setAnswerText('');
+                                                }}
+                                                className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5"
+                                            >
+                                                <MessageSquare size={14} />
+                                                Responder a esta sugestão
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </motion.div>
+                        ))}
+
+                        <div className="bg-white rounded-xl border border-neutral-200/80 overflow-hidden mt-2">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalItems={suggestions.length}
+                                pageSize={pageSize}
+                                onPageChange={setCurrentPage}
+                                onPageSizeChange={setPageSize}
+                                itemName="sugestões"
+                            />
+                        </div>
+                    </>
                 )}
             </div>
         </div>

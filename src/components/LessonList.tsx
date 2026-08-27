@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Pagination from './Pagination.js';
 
 const CATEGORIES = [
     'Adultos',
@@ -31,6 +32,8 @@ export default function LessonList({ role }: { role: string }) {
     const [filterYear, setFilterYear] = useState('all');
     const [filterCategory, setFilterCategory] = useState('all');
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(12);
 
     // Modo de visualização: 'grid' (cards) ou 'table' (lista compacta)
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -95,20 +98,28 @@ export default function LessonList({ role }: { role: string }) {
         return map;
     }, [magazines]);
 
-    // Revistas filtradas pelas opções de ano, trimestre e categoria para o dropdown
+    // Revistas filtradas pelas opções de ano, trimestre e categoria para o dropdown (apenas ativas por padrão)
+    const [includeConcluded, setIncludeConcluded] = useState(false);
+
     const availableMagazines = useMemo(() => {
         return magazines.filter(mag => {
+            if (!includeConcluded && mag.active === false) return false;
             if (filterQuarter !== 'all' && !mag.quarter?.toLowerCase().includes(filterQuarter.toLowerCase())) return false;
             if (filterYear !== 'all' && mag.year.toString() !== filterYear) return false;
             if (filterCategory !== 'all' && getCategory(mag) !== filterCategory) return false;
             return true;
         });
-    }, [magazines, filterQuarter, filterYear, filterCategory]);
+    }, [magazines, includeConcluded, filterQuarter, filterYear, filterCategory]);
 
     // Filtragem principal das lições
     const filteredLessons = useMemo(() => {
         return lessons.filter(lesson => {
             const mag = magazineMap.get(lesson.magazine_id);
+
+            // Oculta lições de revistas desativadas/concluídas por padrão
+            if (!includeConcluded && mag && mag.active === false) {
+                return false;
+            }
 
             // Filtro de Revista específica
             if (filterMagazine !== 'all' && lesson.magazine_id.toString() !== filterMagazine) {
@@ -149,7 +160,10 @@ export default function LessonList({ role }: { role: string }) {
             }
             return a.number - b.number;
         });
-    }, [lessons, magazineMap, filterMagazine, filterQuarter, filterYear, filterCategory, search]);
+    }, [lessons, magazineMap, includeConcluded, filterMagazine, filterQuarter, filterYear, filterCategory, search]);
+
+    const isAll = pageSize >= filteredLessons.length || pageSize >= 9999;
+    const paginatedLessons = isAll ? filteredLessons : filteredLessons.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const activeFiltersCount = (filterMagazine !== 'all' ? 1 : 0) +
         (filterQuarter !== 'all' ? 1 : 0) +
@@ -163,6 +177,7 @@ export default function LessonList({ role }: { role: string }) {
         setFilterYear('all');
         setFilterCategory('all');
         setSearch('');
+        setCurrentPage(1);
     };
 
     const selectedMagazineObj = filterMagazine !== 'all' ? magazineMap.get(Number(filterMagazine)) : null;
@@ -293,7 +308,10 @@ export default function LessonList({ role }: { role: string }) {
                         <select
                             className="w-full px-3.5 py-2.5 bg-white/70 border border-neutral-200/80 rounded-xl outline-none text-xs sm:text-sm font-medium text-neutral-700 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all shadow-sm hover:bg-white"
                             value={filterMagazine}
-                            onChange={(e) => setFilterMagazine(e.target.value)}
+                            onChange={(e) => {
+                                setFilterMagazine(e.target.value);
+                                setCurrentPage(1);
+                            }}
                         >
                             <option value="all">Todas as Revistas ({lessons.length} lições)</option>
                             {availableMagazines.map(m => {
@@ -319,6 +337,7 @@ export default function LessonList({ role }: { role: string }) {
                             onChange={(e) => {
                                 setFilterQuarter(e.target.value);
                                 setFilterMagazine('all');
+                                setCurrentPage(1);
                             }}
                         >
                             <option value="all">Todos os Trimestres</option>
@@ -341,6 +360,7 @@ export default function LessonList({ role }: { role: string }) {
                             onChange={(e) => {
                                 setFilterYear(e.target.value);
                                 setFilterMagazine('all');
+                                setCurrentPage(1);
                             }}
                         >
                             <option value="all">Todos os Anos</option>
@@ -362,6 +382,7 @@ export default function LessonList({ role }: { role: string }) {
                             onChange={(e) => {
                                 setFilterCategory(e.target.value);
                                 setFilterMagazine('all');
+                                setCurrentPage(1);
                             }}
                         >
                             <option value="all">Todas as Categorias</option>
@@ -381,10 +402,13 @@ export default function LessonList({ role }: { role: string }) {
                             placeholder="Buscar por título, número, revista ou texto bíblico..."
                             className="flex-1 bg-transparent border-none focus:ring-0 text-xs sm:text-sm outline-none"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
                         />
                         {search && (
-                            <button onClick={() => setSearch('')} className="p-1 text-neutral-400 hover:text-neutral-600">
+                            <button onClick={() => { setSearch(''); setCurrentPage(1); }} className="p-1 text-neutral-400 hover:text-neutral-600">
                                 <X size={14} />
                             </button>
                         )}
@@ -462,7 +486,10 @@ export default function LessonList({ role }: { role: string }) {
                             {filteredLessons.length} lições cadastradas
                         </span>
                         <button
-                            onClick={() => setFilterMagazine('all')}
+                            onClick={() => {
+                                setFilterMagazine('all');
+                                setCurrentPage(1);
+                            }}
                             className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-white/60 rounded-lg transition-colors"
                             title="Ver todas as revistas"
                         >
@@ -471,13 +498,6 @@ export default function LessonList({ role }: { role: string }) {
                     </div>
                 </motion.div>
             )}
-
-            {/* Resumo de contagem */}
-            <div className="flex items-center justify-between text-xs font-medium text-neutral-500 px-1">
-                <span>
-                    Exibindo <strong>{filteredLessons.length}</strong> de <strong>{lessons.length}</strong> lições
-                </span>
-            </div>
 
             {/* Renderização do Conteúdo: MODO CARDS OU MODO TABELA */}
             {loading ? (
@@ -505,72 +525,86 @@ export default function LessonList({ role }: { role: string }) {
                 </div>
             ) : viewMode === 'grid' ? (
                 /* ── MODO CARDS ── */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredLessons.map((lesson, idx) => (
-                        <motion.div
-                            key={lesson.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: Math.min(idx * 0.03, 0.3) }}
-                            className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 relative group overflow-hidden border border-white/80 shadow-sm hover:shadow-lg hover:shadow-purple-500/5 bg-white/70"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-purple-500/15 transition-all" />
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {paginatedLessons.map((lesson, idx) => (
+                            <motion.div
+                                key={lesson.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: Math.min(idx * 0.03, 0.3) }}
+                                className="glass-card p-6 rounded-3xl flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 relative group overflow-hidden border border-white/80 shadow-sm hover:shadow-lg hover:shadow-purple-500/5 bg-white/70"
+                            >
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-purple-500/15 transition-all" />
 
-                            <div>
-                                <div className="flex justify-between items-start mb-3 gap-2">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 text-purple-700 flex items-center justify-center text-sm font-black shadow-sm shrink-0">
-                                        {lesson.number}
+                                <div>
+                                    <div className="flex justify-between items-start mb-3 gap-2">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 text-purple-700 flex items-center justify-center text-sm font-black shadow-sm shrink-0">
+                                            {lesson.number}
+                                        </div>
+                                        <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 bg-neutral-100/80 text-neutral-600 rounded-lg font-bold border border-neutral-200/50 line-clamp-1 max-w-[190px]" title={lesson.magazine_title}>
+                                            {lesson.magazine_title}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 bg-neutral-100/80 text-neutral-600 rounded-lg font-bold border border-neutral-200/50 line-clamp-1 max-w-[190px]" title={lesson.magazine_title}>
-                                        {lesson.magazine_title}
-                                    </span>
+
+                                    <h3 className="text-base font-bold text-neutral-900 leading-snug mb-2 line-clamp-2" title={lesson.title}>
+                                        {lesson.title}
+                                    </h3>
+
+                                    <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium bg-neutral-100/60 w-fit px-2.5 py-1 rounded-lg mb-3">
+                                        <Calendar size={13} className="text-purple-500" />
+                                        {formatDate(lesson.date)}
+                                    </div>
+
+                                    {lesson.golden_text && (
+                                        <p className="text-xs text-neutral-600 italic line-clamp-2 border-l-2 border-purple-300 pl-2.5 my-2">
+                                            "{lesson.golden_text.split('[Verdade Prática]:')[0].trim()}"
+                                        </p>
+                                    )}
                                 </div>
 
-                                <h3 className="text-base font-bold text-neutral-900 leading-snug mb-2 line-clamp-2" title={lesson.title}>
-                                    {lesson.title}
-                                </h3>
+                                <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedLesson(lesson);
+                                            setShowDetailsModal(true);
+                                        }}
+                                        className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-1.5"
+                                    >
+                                        <Eye size={15} />
+                                        <span>Ver Conteúdo</span>
+                                    </button>
 
-                                <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium bg-neutral-100/60 w-fit px-2.5 py-1 rounded-lg mb-3">
-                                    <Calendar size={13} className="text-purple-500" />
-                                    {formatDate(lesson.date)}
+                                    <button
+                                        onClick={() => handleEdit(lesson)}
+                                        className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl transition-all shadow-sm"
+                                        title="Editar Lição"
+                                    >
+                                        <Edit2 size={15} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(lesson.id)}
+                                        className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
+                                        title="Excluir Lição"
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
                                 </div>
+                            </motion.div>
+                        ))}
+                    </div>
 
-                                {lesson.golden_text && (
-                                    <p className="text-xs text-neutral-600 italic line-clamp-2 border-l-2 border-purple-300 pl-2.5 my-2">
-                                        "{lesson.golden_text.split('[Verdade Prática]:')[0].trim()}"
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center gap-2">
-                                <button
-                                    onClick={() => {
-                                        setSelectedLesson(lesson);
-                                        setShowDetailsModal(true);
-                                    }}
-                                    className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-1.5"
-                                >
-                                    <Eye size={15} />
-                                    <span>Ver Conteúdo</span>
-                                </button>
-
-                                <button
-                                    onClick={() => handleEdit(lesson)}
-                                    className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl transition-all shadow-sm"
-                                    title="Editar Lição"
-                                >
-                                    <Edit2 size={15} />
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(lesson.id)}
-                                    className="p-2.5 bg-white border border-neutral-200/80 text-neutral-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 rounded-xl transition-all shadow-sm"
-                                    title="Excluir Lição"
-                                >
-                                    <Trash2 size={15} />
-                                </button>
-                            </div>
-                        </motion.div>
-                    ))}
+                    <div className="glass-panel rounded-2xl overflow-hidden">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={filteredLessons.length}
+                            pageSize={pageSize}
+                            onPageChange={setCurrentPage}
+                            onPageSizeChange={setPageSize}
+                            pageSizeOptions={[6, 12, 24, 48]}
+                            itemName="lições"
+                        />
+                    </div>
                 </div>
             ) : (
                 /* ── MODO TABELA COMPACTA ── */
@@ -587,7 +621,7 @@ export default function LessonList({ role }: { role: string }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-200/50">
-                                {filteredLessons.map((lesson) => (
+                                {paginatedLessons.map((lesson) => (
                                     <tr key={lesson.id} className="hover:bg-white/60 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center">
@@ -643,6 +677,16 @@ export default function LessonList({ role }: { role: string }) {
                             </tbody>
                         </table>
                     </div>
+
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={filteredLessons.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={setPageSize}
+                        pageSizeOptions={[10, 25, 50, 100]}
+                        itemName="lições"
+                    />
                 </div>
             )}
 

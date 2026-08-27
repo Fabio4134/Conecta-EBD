@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDate } from '../utils.js';
+import Pagination from './Pagination.js';
 
 export default function StudentList({ role }: { role: string }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -16,9 +17,11 @@ export default function StudentList({ role }: { role: string }) {
   const [filterSector, setFilterSector] = useState('');
   const [filterChurch, setFilterChurch] = useState('');
   const [filterClass, setFilterClass] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: '', phone: '', birth_date: '', class_id: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', birth_date: '', class_id: '', church_id: '', sector_id: '' });
 
   useEffect(() => {
     fetchData();
@@ -43,7 +46,9 @@ export default function StudentList({ role }: { role: string }) {
       name: student.name,
       phone: student.phone || '',
       birth_date: student.birth_date || '',
-      class_id: student.class_id ? student.class_id.toString() : ''
+      class_id: student.class_id ? student.class_id.toString() : '',
+      church_id: student.church_id ? student.church_id.toString() : '',
+      sector_id: student.sector_id ? student.sector_id.toString() : ''
     });
     setShowModal(true);
   };
@@ -54,12 +59,15 @@ export default function StudentList({ role }: { role: string }) {
     if (!formData.phone.trim()) return alert('O telefone do aluno é obrigatório');
 
     try {
-      const payload = {
+      const payload: any = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         birth_date: formData.birth_date ? formData.birth_date : null,
         class_id: formData.class_id ? parseInt(formData.class_id) : null
       };
+      if (role === 'master' && formData.church_id) {
+        payload.church_id = parseInt(formData.church_id);
+      }
       if (editingId) {
         await api.put(`/students/${editingId}`, payload);
       } else {
@@ -67,7 +75,7 @@ export default function StudentList({ role }: { role: string }) {
       }
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: '', phone: '', birth_date: '', class_id: '' });
+      setFormData({ name: '', phone: '', birth_date: '', class_id: '', church_id: '', sector_id: '' });
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao salvar aluno');
@@ -121,6 +129,9 @@ export default function StudentList({ role }: { role: string }) {
       : true;
     return matchesSearch && matchesSector && matchesChurch && matchesClass;
   });
+
+  const isAll = pageSize >= filteredStudents.length || pageSize >= 9999;
+  const paginatedStudents = isAll ? filteredStudents : filteredStudents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const downloadStudentsPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as any;
@@ -221,7 +232,10 @@ export default function StudentList({ role }: { role: string }) {
               placeholder="Buscar por nome, telefone, classe ou igreja..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
 
@@ -233,6 +247,7 @@ export default function StudentList({ role }: { role: string }) {
                 setFilterSector(e.target.value);
                 setFilterChurch('');
                 setFilterClass('');
+                setCurrentPage(1);
               }}
             >
               <option value="">Todos os Setores</option>
@@ -249,6 +264,7 @@ export default function StudentList({ role }: { role: string }) {
               onChange={(e) => {
                 setFilterChurch(e.target.value);
                 setFilterClass('');
+                setCurrentPage(1);
               }}
             >
               <option value="">Todas as Congregações</option>
@@ -261,7 +277,10 @@ export default function StudentList({ role }: { role: string }) {
           <select
             className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
             value={filterClass}
-            onChange={(e) => setFilterClass(e.target.value)}
+            onChange={(e) => {
+              setFilterClass(e.target.value);
+              setCurrentPage(1);
+            }}
           >
             <option value="">Todas as Classes</option>
             {availableClasses.map(c => (
@@ -286,7 +305,7 @@ export default function StudentList({ role }: { role: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {filteredStudents.map((student) => (
+              {paginatedStudents.map((student) => (
                 <tr key={student.id} className={`hover:bg-neutral-50 transition-colors group ${!student.active ? 'opacity-50' : ''}`}>
                   <td className="px-6 py-4">
                     <p className="text-sm font-bold text-neutral-800">{student.name}</p>
@@ -335,9 +354,25 @@ export default function StudentList({ role }: { role: string }) {
                   </td>
                 </tr>
               ))}
+              {filteredStudents.length === 0 && (
+                <tr>
+                  <td colSpan={role === 'master' ? 7 : 6} className="px-6 py-12 text-center text-neutral-400 text-sm">
+                    Nenhum aluno encontrado.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredStudents.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="alunos"
+        />
       </div>
 
       {showModal && (
@@ -398,6 +433,54 @@ export default function StudentList({ role }: { role: string }) {
                 />
               </div>
 
+              {role === 'master' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                      Setor
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                      value={formData.sector_id}
+                      onChange={(e) => {
+                        const secId = e.target.value;
+                        setFormData({ ...formData, sector_id: secId, church_id: '', class_id: '' });
+                      }}
+                    >
+                      <option value="">Todos os setores</option>
+                      {sectors.map(s => <option key={s.id} value={s.id.toString()}>{s.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                      Congregação / Igreja *
+                    </label>
+                    <select
+                      required={role === 'master'}
+                      className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                      value={formData.church_id}
+                      onChange={(e) => {
+                        const chuId = e.target.value;
+                        const selectedChu = churches.find(c => c.id.toString() === chuId);
+                        setFormData({
+                          ...formData,
+                          church_id: chuId,
+                          sector_id: selectedChu?.sector_id?.toString() || formData.sector_id,
+                          class_id: ''
+                        });
+                      }}
+                    >
+                      <option value="">Selecione a congregação</option>
+                      {(formData.sector_id
+                        ? churches.filter(c => c.sector_id?.toString() === formData.sector_id)
+                        : churches
+                      ).map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">Classe *</label>
                 <select
@@ -407,7 +490,16 @@ export default function StudentList({ role }: { role: string }) {
                   onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
                 >
                   <option value="">Selecione a classe</option>
-                  {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {(role === 'master' && formData.church_id
+                    ? classes.filter(c => c.church_id?.toString() === formData.church_id || c.church_name === churches.find(ch => ch.id.toString() === formData.church_id)?.name)
+                    : role === 'master' && formData.sector_id
+                    ? classes.filter(c => c.sector_id?.toString() === formData.sector_id)
+                    : classes
+                  ).map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{role === 'master' && !formData.church_id && c.church_name ? ` (${c.church_name})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 

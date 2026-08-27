@@ -73,6 +73,7 @@ export interface Magazine {
   quarter: string;
   year: number;
   category?: string;
+  active?: boolean;
 }
 
 export interface Lesson {

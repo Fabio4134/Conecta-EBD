@@ -3,6 +3,7 @@ import api from '../api';
 import { Material } from '../types';
 import { Upload, FileText, Image as ImageIcon, Download, Eye, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import Pagination from './Pagination.js';
 
 export default function StudyMaterial({ role }: { role: string }) {
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -11,6 +12,8 @@ export default function StudyMaterial({ role }: { role: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   useEffect(() => {
     fetchMaterials();
@@ -59,71 +62,94 @@ export default function StudyMaterial({ role }: { role: string }) {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Material de Estudo</h1>
-          <p className="text-neutral-500 text-sm italic serif">Acesse e baixe materiais de apoio para as classes.</p>
-        </div>
-        {role === 'master' && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
-          >
-            <Upload size={18} />
-            Upload Material
-          </button>
-        )}
-      </div>
+      const isAll = pageSize >= materials.length || pageSize >= 9999;
+      const paginatedMaterials = isAll ? materials : materials.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {materials.map((m) => (
-          <motion.div
-            key={m.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden group"
-          >
-            <div className="aspect-video bg-neutral-100 flex items-center justify-center relative overflow-hidden">
-              {m.cover_path ? (
-                <img src={m.cover_path} alt={`Capa de ${m.title}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              ) : m.file_type.includes('image') ? (
-                <img src={m.file_path} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              ) : (
-                <FileText size={48} className="text-neutral-300" />
-              )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                <a href={m.file_path} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-emerald-500 hover:text-white transition-all">
-                  <Eye size={20} />
-                </a>
-                <a href={m.file_path} download className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-emerald-500 hover:text-white transition-all">
-                  <Download size={20} />
-                </a>
-                {role === 'master' && (
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-red-500 hover:text-white transition-all"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                )}
-              </div>
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900">Material de Estudo</h1>
+              <p className="text-neutral-500 text-sm italic serif">Acesse e baixe materiais de apoio para as classes.</p>
             </div>
-            <div className="p-4">
-              <h3 className="font-bold text-neutral-800 truncate">{m.title}</h3>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-400">
-                  {m.file_type.split('/')[1].toUpperCase()}
-                </span>
-                {role === 'master' && (
-                  <span className="text-[10px] text-neutral-400 italic font-mono">{m.church_name}</span>
-                )}
-              </div>
+            {role === 'master' && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-100"
+              >
+                <Upload size={18} />
+                Upload Material
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedMaterials.map((m) => (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden group"
+                >
+                  <div className="aspect-video bg-neutral-100 flex items-center justify-center relative overflow-hidden">
+                    {m.cover_path ? (
+                      <img src={m.cover_path} alt={`Capa de ${m.title}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : m.file_type.includes('image') ? (
+                      <img src={m.file_path} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    ) : (
+                      <FileText size={48} className="text-neutral-300" />
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <a href={m.file_path} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-emerald-500 hover:text-white transition-all">
+                        <Eye size={20} />
+                      </a>
+                      <a href={m.file_path} download className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-emerald-500 hover:text-white transition-all">
+                        <Download size={20} />
+                      </a>
+                      {role === 'master' && (
+                        <button
+                          onClick={() => handleDelete(m.id)}
+                          className="p-2 bg-white rounded-lg text-neutral-900 hover:bg-red-500 hover:text-white transition-all"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-bold text-neutral-800 truncate">{m.title}</h3>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-400">
+                        {m.file_type.split('/')[1].toUpperCase()}
+                      </span>
+                      {role === 'master' && (
+                        <span className="text-[10px] text-neutral-400 italic font-mono">{m.church_name}</span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </motion.div>
-        ))}
-      </div>
+
+            {materials.length === 0 && (
+              <div className="text-center py-16 bg-white rounded-2xl border border-neutral-200 text-neutral-400 text-sm">
+                Nenhum material cadastrado ainda.
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={materials.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[6, 12, 24, 48]}
+                itemName="materiais"
+              />
+            </div>
+          </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">

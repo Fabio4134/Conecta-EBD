@@ -3,6 +3,7 @@ import api from '../api';
 import { Sector } from '../types';
 import { Building2, Plus, Pencil, Trash2, X, Check, MapPin, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Pagination from './Pagination.js';
 
 interface SectorListProps {
   role: string;
@@ -15,6 +16,8 @@ export default function SectorList({ role }: SectorListProps) {
   const [editingSector, setEditingSector] = useState<Sector | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -82,6 +85,9 @@ export default function SectorList({ role }: SectorListProps) {
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     (s.description || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const isAll = pageSize >= filtered.length || pageSize >= 9999;
+  const paginatedSectors = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -175,7 +181,10 @@ export default function SectorList({ role }: SectorListProps) {
       <div className="relative">
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           placeholder="Buscar por nome ou descrição..."
           className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-sm shadow-sm"
         />
@@ -196,36 +205,50 @@ export default function SectorList({ role }: SectorListProps) {
           <p className="text-sm mt-1">Crie o primeiro setor clicando em "Novo Setor"</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(s => (
-            <motion.div key={s.id} layout
-              className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-md shadow-emerald-500/20">
-                  <MapPin size={18} className="text-white" />
-                </div>
-                {role === 'master' && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(s)}
-                      className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-emerald-600 transition-colors">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(s)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-500 hover:text-red-500 transition-colors">
-                      <Trash2 size={15} />
-                    </button>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedSectors.map(s => (
+              <motion.div key={s.id} layout
+                className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                    <MapPin size={18} className="text-white" />
                   </div>
-                )}
-              </div>
-              <h3 className="font-bold text-neutral-900 text-base leading-tight">{s.name}</h3>
-              {s.description && <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{s.description}</p>}
-              <div className="flex items-center gap-1.5 mt-4 text-xs text-emerald-600 font-semibold">
-                <Building2 size={13} />
-                <span>{s.church_count || 0} congregação{(s.church_count || 0) !== 1 ? 'ões' : ''}</span>
-                <ChevronRight size={13} className="ml-auto text-neutral-300" />
-              </div>
-            </motion.div>
-          ))}
+                  {role === 'master' && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(s)}
+                        className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-emerald-600 transition-colors">
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => handleDelete(s)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-neutral-500 hover:text-red-500 transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-bold text-neutral-900 text-base leading-tight">{s.name}</h3>
+                {s.description && <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{s.description}</p>}
+                <div className="flex items-center gap-1.5 mt-4 text-xs text-emerald-600 font-semibold">
+                  <Building2 size={13} />
+                  <span>{s.church_count || 0} congregação{(s.church_count || 0) !== 1 ? 'ões' : ''}</span>
+                  <ChevronRight size={13} className="ml-auto text-neutral-300" />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[6, 12, 24, 48]}
+              itemName="setores"
+            />
+          </div>
         </div>
       )}
     </div>

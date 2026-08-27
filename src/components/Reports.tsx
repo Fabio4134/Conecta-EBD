@@ -5,6 +5,7 @@ import { FileText, Download, Filter, BarChart2, Users, CheckCircle, XCircle, Bui
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDate } from '../utils';
+import Pagination from './Pagination.js';
 
 export default function Reports({ role }: { role: string }) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -14,6 +15,8 @@ export default function Reports({ role }: { role: string }) {
   const [magazines, setMagazines] = useState<Magazine[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const [filter, setFilter] = useState({
     sector: '',
@@ -26,6 +29,10 @@ export default function Reports({ role }: { role: string }) {
     startDate: '',
     endDate: ''
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -173,6 +180,9 @@ export default function Reports({ role }: { role: string }) {
     doc.save('relatorio-frequencia-conecta-ebd.pdf');
   };
 
+  const isAll = pageSize >= filteredData.length || pageSize >= 9999;
+  const paginatedData = isAll ? filteredData : filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -289,7 +299,11 @@ export default function Reports({ role }: { role: string }) {
               onChange={(e) => setFilter({ ...filter, magazine: e.target.value, lesson: '' })}
             >
               <option value="">Todas as revistas</option>
-              {magazines.map(m => <option key={m.id} value={m.id.toString()}>{m.title}</option>)}
+              {magazines.map(m => (
+                <option key={m.id} value={m.id.toString()}>
+                  {m.title}{m.active === false ? ' (Concluída)' : ''}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -361,50 +375,62 @@ export default function Reports({ role }: { role: string }) {
             {attendance.length === 0 ? 'Nenhuma chamada registrada ainda.' : 'Nenhum registro encontrado com os filtros aplicados.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
-                  <th className="px-6 py-4">Aluno</th>
-                  <th className="px-6 py-4">Classe</th>
-                  <th className="px-6 py-4">Lição</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Data</th>
-                  {role === 'master' && <th className="px-6 py-4">Congregação / Igreja</th>}
-                  {role === 'master' && <th className="px-6 py-4">Setor</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200/50">
-                {filteredData.map((record) => {
-                  const student = students.find(s => s.id === record.student_id);
-                  const studentClassId = record.class_id || student?.class_id;
-                  const cls = classes.find(c => c.id === studentClassId);
-                  return (
-                    <tr key={record.id} className="hover:bg-white/50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-neutral-800">{record.student_name}</td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-lg font-semibold">{cls?.name || '—'}</span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-neutral-600 font-medium">{record.lesson_title || '—'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-widest ${record.present ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {record.present ? 'Presente' : 'Ausente'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{formatDate(record.date)}</td>
-                      {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-600 font-medium">{record.church_name || '—'}</td>}
-                      {role === 'master' && (
-                        <td className="px-6 py-4 text-xs text-neutral-500">
-                          {record.sector_name ? (
-                            <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold">{record.sector_name}</span>
-                          ) : '—'}
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/40 text-[10px] uppercase tracking-widest text-neutral-500 font-bold border-b border-neutral-200/50">
+                    <th className="px-6 py-4">Aluno</th>
+                    <th className="px-6 py-4">Classe</th>
+                    <th className="px-6 py-4">Lição</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Data</th>
+                    {role === 'master' && <th className="px-6 py-4">Congregação / Igreja</th>}
+                    {role === 'master' && <th className="px-6 py-4">Setor</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200/50">
+                  {paginatedData.map((record) => {
+                    const student = students.find(s => s.id === record.student_id);
+                    const studentClassId = record.class_id || student?.class_id;
+                    const cls = classes.find(c => c.id === studentClassId);
+                    return (
+                      <tr key={record.id} className="hover:bg-white/50 transition-colors">
+                        <td className="px-6 py-4 text-sm font-bold text-neutral-800">{record.student_name}</td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs px-2.5 py-1 bg-neutral-100 text-neutral-700 rounded-lg font-semibold">{cls?.name || '—'}</span>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td className="px-6 py-4 text-xs text-neutral-600 font-medium">{record.lesson_title || '—'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-widest ${record.present ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                            {record.present ? 'Presente' : 'Ausente'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-neutral-500 font-mono">{formatDate(record.date)}</td>
+                        {role === 'master' && <td className="px-6 py-4 text-xs text-neutral-600 font-medium">{record.church_name || '—'}</td>}
+                        {role === 'master' && (
+                          <td className="px-6 py-4 text-xs text-neutral-500">
+                            {record.sector_name ? (
+                              <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-semibold">{record.sector_name}</span>
+                            ) : '—'}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredData.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 25, 50, 100]}
+              itemName="registros"
+            />
           </div>
         )}
       </div>

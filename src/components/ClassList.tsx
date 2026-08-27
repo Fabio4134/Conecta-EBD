@@ -9,6 +9,7 @@ import {
 import { motion } from 'motion/react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Pagination from './Pagination.js';
 
 export default function ClassList({ role }: { role: string }) {
     const [classes, setClasses] = useState<Class[]>([]);
@@ -17,9 +18,11 @@ export default function ClassList({ role }: { role: string }) {
     const [search, setSearch] = useState('');
     const [filterSector, setFilterSector] = useState('');
     const [filterChurch, setFilterChurch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [formData, setFormData] = useState<{ name: string; magazine_id: number | string }>({ name: '', magazine_id: '' });
+    const [formData, setFormData] = useState<{ name: string; magazine_id: number | string; church_id?: string; sector_id?: string }>({ name: '', magazine_id: '', church_id: '', sector_id: '' });
     const [magazines, setMagazines] = useState<Magazine[]>([]);
 
     // Share link modal
@@ -95,39 +98,56 @@ export default function ClassList({ role }: { role: string }) {
             columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 30, halign: 'center' } },
         });
 
-        const teacherEndY = (doc as any).lastAutoTable.finalY + 8;
-
         // Students table
         doc.setTextColor(30, 30, 30);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.text('Alunos', 14, teacherEndY);
+        const teachersTableFinalY = (doc as any).lastAutoTable.finalY || 60;
+        doc.text('Alunos Matriculados', 14, teachersTableFinalY + 10);
 
         autoTable(doc, {
-            startY: teacherEndY + 4,
-            head: [['#', 'Nome', 'Data de Nascimento', 'Status']],
-            body: classStudents.map((s, i) => [i + 1, s.name, s.birth_date || '—', s.active ? 'Ativo' : 'Inativo']),
+            startY: teachersTableFinalY + 14,
+            head: [['#', 'Nome', 'Telefone', 'Status']],
+            body: classStudents.map((s, index) => [
+                (index + 1).toString(),
+                s.name,
+                s.phone || 'Não informado',
+                s.active ? 'Ativo' : 'Inativo'
+            ]),
             theme: 'grid',
-            styles: { fontSize: 10, cellPadding: 4 },
+            styles: { fontSize: 9, cellPadding: 3.5 },
             headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
             alternateRowStyles: { fillColor: [240, 253, 244] },
-            columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 2: { cellWidth: 45, halign: 'center' }, 3: { cellWidth: 25, halign: 'center' } },
+            columnStyles: {
+                0: { cellWidth: 12, halign: 'center' },
+                1: { cellWidth: 'auto', fontStyle: 'bold' },
+                2: { cellWidth: 45 },
+                3: { cellWidth: 25, halign: 'center' }
+            },
         });
 
-        doc.save(`classe-${selectedClass.name.replace(/\s+/g, '-')}.pdf`);
+        doc.save(`classe-${selectedClass.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const payload: any = {
+                name: formData.name.trim(),
+                magazine_id: formData.magazine_id ? Number(formData.magazine_id) : null
+            };
+            if (role === 'master' && formData.church_id) {
+                payload.church_id = parseInt(formData.church_id);
+            }
+
             if (editingId) {
-                await api.put(`/classes/${editingId}`, formData);
+                await api.put(`/classes/${editingId}`, payload);
             } else {
-                await api.post('/classes', formData);
+                await api.post('/classes', payload);
             }
             setShowModal(false);
             setEditingId(null);
-            setFormData({ name: '', magazine_id: '' });
+            setFormData({ name: '', magazine_id: '', church_id: '', sector_id: '' });
             fetchData();
         } catch (err: any) {
             alert(err.response?.data?.error || 'Erro ao salvar classe');
@@ -136,7 +156,12 @@ export default function ClassList({ role }: { role: string }) {
 
     const handleEdit = (cls: Class) => {
         setEditingId(cls.id);
-        setFormData({ name: cls.name, magazine_id: cls.magazine_id || '' });
+        setFormData({
+            name: cls.name,
+            magazine_id: cls.magazine_id || '',
+            church_id: cls.church_id ? cls.church_id.toString() : '',
+            sector_id: cls.sector_id ? cls.sector_id.toString() : ''
+        });
         setShowModal(true);
     };
 
@@ -175,6 +200,9 @@ export default function ClassList({ role }: { role: string }) {
             : true;
         return matchesSearch && matchesSector && matchesChurch;
     });
+
+    const isAll = pageSize >= filtered.length || pageSize >= 9999;
+    const paginatedClasses = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     // ── DETAIL VIEW ──────────────────────────────────────────────────────────
     if (selectedClass) {
@@ -390,7 +418,16 @@ export default function ClassList({ role }: { role: string }) {
                 <div className="p-5 border-b border-neutral-200/50 flex flex-col sm:flex-row items-center gap-3 flex-wrap">
                     <div className="flex-1 w-full bg-white/50 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-neutral-200/80 focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all shadow-sm min-w-[220px]">
                         <Search size={18} className="text-neutral-400" />
-                        <input type="text" placeholder="Buscar por classe, congregação..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none" value={search} onChange={(e) => setSearch(e.target.value)} />
+                        <input
+                            type="text"
+                            placeholder="Buscar por classe, congregação..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none"
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                        />
                     </div>
 
                     {role === 'master' && sectors.length > 0 && (
@@ -400,6 +437,7 @@ export default function ClassList({ role }: { role: string }) {
                             onChange={(e) => {
                                 setFilterSector(e.target.value);
                                 setFilterChurch('');
+                                setCurrentPage(1);
                             }}
                         >
                             <option value="">Todos os Setores</option>
@@ -413,7 +451,10 @@ export default function ClassList({ role }: { role: string }) {
                         <select
                             className="w-full sm:w-auto px-4 py-2.5 bg-white/50 border border-neutral-200/80 rounded-xl outline-none text-sm text-neutral-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all shadow-sm hover:bg-white/80"
                             value={filterChurch}
-                            onChange={(e) => setFilterChurch(e.target.value)}
+                            onChange={(e) => {
+                                setFilterChurch(e.target.value);
+                                setCurrentPage(1);
+                            }}
                         >
                             <option value="">Todas as Congregações</option>
                             {availableChurches.map(church => (
@@ -434,7 +475,7 @@ export default function ClassList({ role }: { role: string }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-200/50">
-                            {filtered.map((cls) => (
+                            {paginatedClasses.map((cls) => (
                                 <tr key={cls.id} className={`hover:bg-white/40 transition-colors group ${!cls.active ? 'opacity-50' : ''}`}>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -490,6 +531,15 @@ export default function ClassList({ role }: { role: string }) {
                         </tbody>
                     </table>
                 </div>
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalItems={filtered.length}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={setPageSize}
+                    itemName="classes"
+                />
             </div>
 
             {showModal && (
@@ -527,6 +577,54 @@ export default function ClassList({ role }: { role: string }) {
                                     placeholder="Ex: Jovens - Herdeiros de Deus"
                                 />
                             </div>
+
+                            {role === 'master' && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                                            Setor
+                                        </label>
+                                        <select
+                                            className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                                            value={formData.sector_id}
+                                            onChange={(e) => {
+                                                const secId = e.target.value;
+                                                setFormData({ ...formData, sector_id: secId, church_id: '' });
+                                            }}
+                                        >
+                                            <option value="">Todos os setores</option>
+                                            {sectors.map(s => <option key={s.id} value={s.id.toString()}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-emerald-800 uppercase tracking-widest mb-1">
+                                            Congregação / Igreja *
+                                        </label>
+                                        <select
+                                            required={role === 'master'}
+                                            className="w-full px-3 py-2 bg-white border border-emerald-200/80 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs text-neutral-700"
+                                            value={formData.church_id}
+                                            onChange={(e) => {
+                                                const chuId = e.target.value;
+                                                const selectedChu = churches.find(c => c.id.toString() === chuId);
+                                                setFormData({
+                                                    ...formData,
+                                                    church_id: chuId,
+                                                    sector_id: selectedChu?.sector_id?.toString() || formData.sector_id
+                                                });
+                                            }}
+                                        >
+                                            <option value="">Selecione a congregação</option>
+                                            {(formData.sector_id
+                                                ? churches.filter(c => c.sector_id?.toString() === formData.sector_id)
+                                                : churches
+                                            ).map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1.5">
                                     Vincular Revista (Opcional)
@@ -537,7 +635,7 @@ export default function ClassList({ role }: { role: string }) {
                                     onChange={(e) => setFormData({ ...formData, magazine_id: e.target.value ? Number(e.target.value) : '' })}
                                 >
                                     <option value="">Nenhuma revista (Todas as lições visíveis)</option>
-                                    {magazines.map(m => (
+                                    {magazines.filter(m => m.active !== false).map(m => (
                                         <option key={m.id} value={m.id}>{m.title} ({m.quarter} • {m.year})</option>
                                     ))}
                                 </select>

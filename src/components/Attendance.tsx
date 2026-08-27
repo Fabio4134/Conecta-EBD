@@ -146,7 +146,7 @@ export default function Attendance({ role }: { role: string }) {
                     }}
                   >
                     <option value="">Selecione a revista</option>
-                    {magazines.map(m => (
+                    {magazines.filter(m => m.active !== false).map(m => (
                       <option key={m.id} value={m.id}>{m.title}</option>
                     ))}
                   </select>
@@ -291,15 +291,15 @@ export default function Attendance({ role }: { role: string }) {
               />
             </div>
 
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-              {filteredHistory.slice(0, 20).map((record) => (
-                <div key={record.id} className="bg-white p-4 rounded-xl border border-neutral-100 shadow-sm flex items-center justify-between group">
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+              {filteredHistory.map((record) => (
+                <div key={record.id} className="bg-white p-4 rounded-xl border border-neutral-100 shadow-sm flex items-center justify-between group hover:border-neutral-300 transition-colors">
                   <div>
                     <p className="text-sm font-bold text-neutral-800">{record.student_name}</p>
                     <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-widest">{formatDate(record.date)} • {record.lesson_title}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${record.present ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                    <span className={`w-2 h-2 rounded-full ${record.present ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-red-500 ring-2 ring-red-100'}`}></span>
                     <button onClick={() => handleDelete(record.id)} className="p-1.5 text-neutral-400 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Excluir Registro">
                       <Trash2 size={14} />
                     </button>

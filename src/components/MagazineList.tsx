@@ -3,9 +3,10 @@ import api from '../api';
 import { Magazine } from '../types';
 import {
   BookOpen, Calendar, Plus, Edit2, Trash2, Sparkles,
-  Search, Filter, Users, X, ArrowRight, Layers
+  Search, Filter, Users, X, ArrowRight, Layers, CheckCircle2, Power, PowerOff, Archive, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Pagination from './Pagination.js';
 
 interface MagazineListProps {
   role: string;
@@ -29,12 +30,16 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ title: '', quarter: '1º Trimestre', year: '2026', category: 'Adultos' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // Filtros enxutos
+  const [filterStatus, setFilterStatus] = useState<'active' | 'concluded' | 'all'>('active');
   const [filterQuarter, setFilterQuarter] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
 
   useEffect(() => {
     fetchData();
@@ -49,6 +54,18 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
       // Silencioso
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (mag: Magazine) => {
+    setTogglingId(mag.id);
+    try {
+      await api.patch(`/magazines/${mag.id}/toggle`);
+      await fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao alterar status da revista');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -73,6 +90,10 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
   // Filtragem enxuta
   const filtered = useMemo(() => {
     return magazines.filter(mag => {
+      // Filtro Status (Ativas / Concluídas)
+      if (filterStatus === 'active' && mag.active === false) return false;
+      if (filterStatus === 'concluded' && mag.active !== false) return false;
+
       // Filtro Trimestre
       if (filterQuarter !== 'all' && !mag.quarter?.toLowerCase().includes(filterQuarter.toLowerCase())) {
         return false;
@@ -90,21 +111,26 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchesTitle = mag.title.toLowerCase().includes(q);
-        const matchesQuarter = mag.quarter.toLowerCase().includes(q);
+        const matchesQuarter = mag.quarter?.toLowerCase().includes(q);
         const matchesYear = mag.year.toString().includes(q);
         if (!matchesTitle && !matchesQuarter && !matchesYear) return false;
       }
       return true;
     });
-  }, [magazines, filterQuarter, filterYear, filterCategory, search]);
+  }, [magazines, filterStatus, filterQuarter, filterYear, filterCategory, search]);
 
-  const hasActiveFilters = filterQuarter !== 'all' || filterYear !== 'all' || filterCategory !== 'all' || search !== '';
+  const isAll = pageSize >= filtered.length || pageSize >= 9999;
+  const paginatedMagazines = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const hasActiveFilters = filterStatus !== 'all' || filterQuarter !== 'all' || filterYear !== 'all' || filterCategory !== 'all' || search !== '';
 
   const clearFilters = () => {
+    setFilterStatus('all');
     setFilterQuarter('all');
     setFilterYear('all');
     setFilterCategory('all');
     setSearch('');
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -191,26 +217,49 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
               type="text"
               placeholder="Buscar tema ou título da revista..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500/50 outline-none"
             />
             <Search className="absolute left-3.5 top-2.5 text-neutral-400" size={16} />
             {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600">
+              <button onClick={() => { setSearch(''); setCurrentPage(1); }} className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600">
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* Filtros em Linha: Trimestre, Ano e Turma */}
+          {/* Filtros em Linha: Status, Trimestre, Ano e Turma */}
           <div className="flex flex-wrap items-center gap-2">
             
+            {/* Status (Ativas / Concluídas) */}
+            <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-neutral-700">
+              <span className={`w-2 h-2 rounded-full ${filterStatus === 'active' ? 'bg-emerald-500' : filterStatus === 'concluded' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+              <select
+                value={filterStatus}
+                onChange={e => {
+                  setFilterStatus(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent border-none outline-none text-xs font-semibold text-neutral-700 cursor-pointer"
+              >
+                <option value="active">Revistas Ativas</option>
+                <option value="concluded">Concluídas / Inativas</option>
+                <option value="all">Todas as Revistas</option>
+              </select>
+            </div>
+
             {/* Trimestre */}
             <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-neutral-700">
               <Calendar size={14} className="text-emerald-600" />
               <select
                 value={filterQuarter}
-                onChange={e => setFilterQuarter(e.target.value)}
+                onChange={e => {
+                  setFilterQuarter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent border-none outline-none text-xs font-semibold text-neutral-700 cursor-pointer"
               >
                 <option value="all">Todos os Trimestres</option>
@@ -225,7 +274,10 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
             <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-neutral-700">
               <select
                 value={filterYear}
-                onChange={e => setFilterYear(e.target.value)}
+                onChange={e => {
+                  setFilterYear(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent border-none outline-none text-xs font-semibold text-neutral-700 cursor-pointer"
               >
                 <option value="all">Todos os Anos</option>
@@ -240,7 +292,10 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
               <Users size={14} className="text-emerald-600" />
               <select
                 value={filterCategory}
-                onChange={e => setFilterCategory(e.target.value)}
+                onChange={e => {
+                  setFilterCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent border-none outline-none text-xs font-semibold text-neutral-700 cursor-pointer"
               >
                 <option value="all">Todas as Turmas</option>
@@ -268,7 +323,7 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
         {/* Resumo de Resultados */}
         <div className="flex items-center justify-between text-xs text-neutral-500 pt-1 border-t border-neutral-100">
           <span>
-            Exibindo <strong>{filtered.length}</strong> de <strong>{magazines.length}</strong> revista{magazines.length !== 1 ? 's' : ''}
+            Exibindo <strong>{filtered.length}</strong> de <strong>{magazines.length}</strong> revista{magazines.length !== 1 ? 's' : ''} {filterStatus === 'active' ? '(ativas)' : filterStatus === 'concluded' ? '(concluídas)' : ''}
           </span>
           {hasActiveFilters && (
             <span className="text-emerald-600 font-medium">Filtro ativo</span>
@@ -300,68 +355,124 @@ export default function MagazineList({ role, onNavigateToAI, onNavigateToLessons
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filtered.map((mag) => {
-            const categoryBadge = getCategory(mag);
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {paginatedMagazines.map((mag) => {
+              const categoryBadge = getCategory(mag);
+              const isConcluded = mag.active === false;
 
-            return (
-              <motion.div
-                key={mag.id}
-                layout
-                className="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-neutral-200/80 hover:border-emerald-300 transition-all flex flex-col sm:flex-row gap-5 items-start sm:items-center relative group hover:shadow-md"
-              >
-                {/* Capa estilizada com ícone */}
-                <div className="w-20 h-28 sm:w-24 sm:h-32 bg-gradient-to-br from-emerald-50 to-neutral-100 rounded-xl flex flex-col items-center justify-center text-emerald-600 border border-emerald-100/80 flex-shrink-0 shadow-sm">
-                  <BookOpen size={30} />
-                  <span className="text-[9px] font-bold uppercase tracking-wider mt-2 text-neutral-500">CPAD</span>
-                </div>
-
-                {/* Informações */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-md">
-                      {mag.quarter} • {mag.year}
-                    </span>
-                    <span className="text-[11px] font-bold bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-md border border-neutral-200">
-                      {categoryBadge}
-                    </span>
+              return (
+                <motion.div
+                  key={mag.id}
+                  layout
+                  className={`bg-white p-6 sm:p-7 rounded-2xl shadow-sm border transition-all flex flex-col sm:flex-row gap-5 items-start sm:items-center relative group hover:shadow-md ${
+                    isConcluded
+                      ? 'border-neutral-200/60 bg-neutral-50/50 opacity-80 hover:opacity-100'
+                      : 'border-neutral-200/80 hover:border-emerald-300'
+                  }`}
+                >
+                  {/* Capa estilizada com ícone */}
+                  <div className={`w-20 h-28 sm:w-24 sm:h-32 rounded-xl flex flex-col items-center justify-center border flex-shrink-0 shadow-sm ${
+                    isConcluded
+                      ? 'bg-neutral-100 text-neutral-400 border-neutral-200'
+                      : 'bg-gradient-to-br from-emerald-50 to-neutral-100 text-emerald-600 border-emerald-100/80'
+                  }`}>
+                    <BookOpen size={30} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider mt-2 text-neutral-500">CPAD</span>
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-bold text-neutral-900 leading-snug break-words">
-                    {mag.title}
-                  </h3>
+                  {/* Informações */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                      <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                        isConcluded
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                      }`}>
+                        {mag.quarter} • {mag.year}
+                      </span>
+                      <span className="text-[11px] font-bold bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-md border border-neutral-200">
+                        {categoryBadge}
+                      </span>
+                      {isConcluded && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-neutral-200/80 text-neutral-600 px-2 py-0.5 rounded-md">
+                          Concluída
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Ações */}
-                  <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between">
-                    <button
-                      onClick={() => onNavigateToLessons?.(mag.id)}
-                      className="text-xs font-bold text-emerald-600 uppercase tracking-wider hover:text-emerald-700 transition-colors flex items-center gap-1"
-                    >
-                      Visualizar Lições →
-                    </button>
+                    <h3 className={`text-base sm:text-lg font-bold leading-snug break-words ${isConcluded ? 'text-neutral-600 line-through decoration-neutral-400' : 'text-neutral-900'}`}>
+                      {mag.title}
+                    </h3>
 
-                    <div className="flex items-center gap-1">
+                    {/* Ações */}
+                    <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between">
                       <button
-                        onClick={() => handleEdit(mag)}
-                        className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        title="Editar título/trimestre/turma"
+                        onClick={() => onNavigateToLessons?.(mag.id)}
+                        className="text-xs font-bold text-emerald-600 uppercase tracking-wider hover:text-emerald-700 transition-colors flex items-center gap-1"
                       >
-                        <Edit2 size={16} />
+                        Visualizar Lições →
                       </button>
-                      <button
-                        onClick={() => handleDelete(mag)}
-                        disabled={deletingId === mag.id}
-                        className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                        title="Excluir Revista e Lições"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {/* Botão Concluir / Desativar / Reativar */}
+                        <button
+                          onClick={() => handleToggleActive(mag)}
+                          disabled={togglingId === mag.id}
+                          className={`p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold ${
+                            isConcluded
+                              ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                              : 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+                          }`}
+                          title={isConcluded ? "Reativar Revista (tornar visível nos menus de Lições e Chamada)" : "Concluir / Desativar Revista (ocultar dos menus seguintes para enxugar as listas)"}
+                        >
+                          {isConcluded ? (
+                            <>
+                              <RotateCcw size={14} />
+                              <span className="hidden sm:inline">Reativar</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={14} />
+                              <span className="hidden sm:inline">Concluir</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => handleEdit(mag)}
+                          className="p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Editar título/trimestre/turma"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(mag)}
+                          disabled={deletingId === mag.id}
+                          className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Excluir Revista e Lições"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[4, 8, 16, 32]}
+              itemName="revistas"
+            />
+          </div>
         </div>
       )}
 
