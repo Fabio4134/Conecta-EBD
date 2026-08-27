@@ -58,7 +58,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
         />
       )}
       <div className={cn(
-        "w-72 sm:w-64 bg-neutral-900 border-r border-white/10 h-screen fixed left-0 top-0 flex flex-col z-50 transition-transform duration-300 md:translate-x-0 overflow-hidden",
+        "w-72 sm:w-64 bg-neutral-900 border-r border-white/10 h-screen h-[100dvh] max-h-[100dvh] fixed left-0 top-0 flex flex-col z-50 transition-transform duration-300 md:translate-x-0 overflow-hidden",
         "bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-950",
         isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
       )}>
@@ -66,14 +66,14 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="p-5 sm:p-6 flex flex-col gap-4 sm:gap-6 relative z-10 border-b border-white/5">
+        <div className="p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 relative z-10 border-b border-white/5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-white/5 rounded-xl flex items-center justify-center p-1 border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
+              <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center p-1 border border-white/10 shadow-lg shadow-black/20 overflow-hidden">
                 <img src="/logo-transparent.png" alt="Logo ADMTN" className="w-full h-full object-contain drop-shadow-md" />
               </div>
               <div>
-                <h1 className="text-white font-bold tracking-tight text-base sm:text-lg leading-tight">Conecta EBD</h1>
+                <h1 className="text-white font-bold tracking-tight text-sm sm:text-base leading-tight">Conecta EBD</h1>
                 <p className={cn("text-[10px] uppercase tracking-[0.2em] font-bold mt-0.5", roleBadgeColor)}>{roleLabel}</p>
               </div>
             </div>
@@ -95,7 +95,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
           )}
         </div>
 
-        <nav className="flex-1 px-3.5 py-2.5 space-y-1 overflow-y-auto custom-scrollbar relative z-10">
+        <nav className="flex-1 min-h-0 px-3.5 py-2 space-y-1 overflow-y-auto custom-scrollbar relative z-10 overscroll-contain">
           {menus.map((menu: any) => {
             const isActive = activeMenu === menu.id;
             const isFeatured = menu.featured;
@@ -141,12 +141,12 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
           })}
         </nav>
 
-        <div className="p-3.5 sm:p-4 border-t border-white/5 relative z-10 bg-black/30 backdrop-blur-md pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="p-3 sm:p-4 border-t border-white/10 relative z-20 bg-neutral-950/95 backdrop-blur-md shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] shadow-lg shadow-black">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 sm:py-3 rounded-xl text-sm font-medium text-red-400/90 hover:bg-red-500/10 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20 group active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 active:bg-red-500/30 transition-all border border-red-500/30 group active:scale-[0.98] shadow-sm"
           >
-            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform shrink-0" />
+            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform shrink-0 text-red-400" />
             <span>Sair do Sistema</span>
           </button>
         </div>
