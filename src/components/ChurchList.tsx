@@ -23,8 +23,10 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
         setChurches(res.data);
     };
 
+    const isMasterOrSec = role === 'master' || role === 'secretary';
+
     const fetchSectors = async () => {
-        if (role !== 'master') return;
+        if (!isMasterOrSec) return;
         try {
             const res = await api.get('/sectors');
             setSectors(res.data);
@@ -74,7 +76,7 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
 
     const filtered = churches.filter(c => {
         // Usuário standard só vê a própria congregação
-        if (role !== 'master') {
+        if (!isMasterOrSec) {
             return c.id === churchId;
         }
         const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -86,8 +88,6 @@ export default function ChurchList({ role, churchId }: { role: string; churchId?
 
     const isAll = pageSize >= filtered.length || pageSize >= 9999;
     const paginatedChurches = isAll ? filtered : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-    const isMasterOrSec = role === 'master' || role === 'secretary';
 
     return (
         <div className="space-y-6">

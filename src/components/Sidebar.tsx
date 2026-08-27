@@ -1,8 +1,7 @@
-import React from 'react';
 import {
   Home, Church, BookOpen, FileText, Users, GraduationCap,
   Layers, Calendar, CheckSquare, Download, BarChart2, TrendingUp,
-  LogOut, Key, X, MessageSquare, MapPin, Building2, Sparkles
+  LogOut, Key, X, MessageSquare, MapPin, Building2, Sparkles, Map as MapIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -28,6 +27,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, role, churchName, o
   const menus = [
     { id: 'inicio', label: 'Tela Inicial', icon: Home },
     ...(isMasterOrSec ? [{ id: 'setores', label: 'Setores', icon: MapPin }] : []),
+    { id: 'mapa', label: 'Mapa Salvador', icon: MapIcon },
     { id: 'perfil', label: 'Editar Perfil', icon: Building2 },
     { id: 'igreja', label: 'Igreja', icon: Church },
     { id: 'gerador_ia', label: 'Gerador IA de Lições', icon: Sparkles },

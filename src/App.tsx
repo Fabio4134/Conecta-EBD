@@ -26,6 +26,7 @@ import SectorList from './components/SectorList';
 import ChurchProfile from './components/ChurchProfile';
 import MagazineAIGenerator from './components/MagazineAIGenerator';
 import StudentSelfRegister from './components/StudentSelfRegister';
+import MapaSvador from './components/MapaSvador';
 import { User } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -72,6 +73,7 @@ export default function App() {
     switch (activeMenu) {
       case 'inicio': return <Dashboard role={user.role} />;
       case 'setores': return <SectorList role={user.role} />;
+      case 'mapa': return <MapaSvador role={user.role} />;
       case 'perfil': return <ChurchProfile user={user} />;
       case 'igreja': return <ChurchList role={user.role} churchId={user.church_id} />;
       case 'gerador_ia': return <MagazineAIGenerator onNavigateToLessons={() => setActiveMenu('licoes')} />;
